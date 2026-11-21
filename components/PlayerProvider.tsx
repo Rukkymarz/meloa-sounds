@@ -199,6 +199,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   };
 
   const start = useCallback(async (t: Track) => {
+    // This runs inside the listener's tap, the only moment iPhones allow sound to be
+    // switched on. YouTube remembers "muted" between songs (and visits), so undo it here.
+    try {
+      const yt = ytRef.current;
+      if (yt?.isMuted?.()) yt.unMute();
+      yt?.setVolume?.(100);
+    } catch {}
+    if (audioRef.current) {
+      audioRef.current.muted = false;
+      audioRef.current.volume = 1;
+    }
+    setNeedsSound(false);
     stopAll();
     setError(null);
     setPosition(0);
@@ -266,6 +278,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
             onStateChange: (e: any) => {
               if (e.data === 1) {
                 setStatus("playing");
+                try {
+                  if (e.target.isMuted?.()) setNeedsSound(true); // playing silently: offer "Turn on sound"
+                } catch {}
                 if (soundTimer.current) clearTimeout(soundTimer.current);
               }
               if (e.data === 2) setStatus("paused");
@@ -389,7 +404,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const a = audioRef.current!;
       a.paused ? a.play() : a.pause();
     } else if (kind === "youtube" && ytRef.current) {
-      status === "playing" ? ytRef.current.pauseVideo() : ytRef.current.playVideo();
+      if (status === "playing") ytRef.current.pauseVideo();
+      else {
+        try {
+          ytRef.current.unMute();
+          ytRef.current.setVolume?.(100);
+        } catch {}
+        setNeedsSound(false);
+        ytRef.current.playVideo();
+      }
     }
   }, [kind, status]);
 
