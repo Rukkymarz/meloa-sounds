@@ -8,6 +8,8 @@ import { SongList, GenreGrid, SectionHead } from "@/components/Shelves";
 import { Artwork } from "@/components/Artwork";
 import { Icon } from "@/components/Icon";
 import { playLabel } from "@/lib/playinfo";
+import Link from "next/link";
+import { AlbumShelf, ArtistShelf, type AlbumLite } from "@/components/Albums";
 
 const LINK = /^https:\/\/(www\.|m\.|music\.)?(youtube\.com|youtu\.be|audiomack\.com|soundcloud\.com|on\.soundcloud\.com|mixcloud\.com|[\w-]+\.bandcamp\.com|bandcamp\.com|boomplay\.com|open\.spotify\.com|audius\.co|(play\.)?mdundo\.com)\//i;
 
@@ -17,6 +19,9 @@ interface ArtistResult {
   picture?: string;
   fans?: number;
   top: Track[];
+  albums: AlbumLite[];
+  singles: AlbumLite[];
+  related: { id: number; name: string; picture?: string }[];
 }
 interface Results {
   songs: Track[];
@@ -125,9 +130,13 @@ export default function SearchPage() {
 
       {data?.artist && (
         <section className="artist-head" aria-label={data.artist.name}>
-          <Artwork src={data.artist.picture} title={data.artist.name} round />
+          <Link href={`/artist/${data.artist.id}`} aria-label={`Open ${data.artist.name}`}>
+            <Artwork src={data.artist.picture} title={data.artist.name} round />
+          </Link>
           <div>
-            <h2 className="artist-name">{data.artist.name}</h2>
+            <h2 className="artist-name">
+              <Link href={`/artist/${data.artist.id}`} style={{ textDecoration: "none" }}>{data.artist.name}</Link>
+            </h2>
             {data.artist.fans ? <p className="muted small">{new Intl.NumberFormat("en", { notation: "compact" }).format(data.artist.fans)} fans on Deezer</p> : null}
             {data.artist.top.length > 0 && (
               <button className="btn btn-plum" onClick={() => playList(data.artist!.top, 0)}>
@@ -138,7 +147,14 @@ export default function SearchPage() {
           </div>
         </section>
       )}
-      {data?.artist && <SongList title="Top songs" tracks={data.artist.top} ranked />}
+      {data?.artist && (
+        <>
+          <SongList title="Top songs" tracks={data.artist.top.slice(0, 5)} href={`/artist/${data.artist.id}`} />
+          <AlbumShelf title="Albums" albums={data.artist.albums} href={`/artist/${data.artist.id}`} />
+          <AlbumShelf title="Singles & EPs" albums={data.artist.singles} href={`/artist/${data.artist.id}`} />
+          <ArtistShelf title="Similar artists" artists={data.artist.related} />
+        </>
+      )}
 
       {data && top && (
         <>

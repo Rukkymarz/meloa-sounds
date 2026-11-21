@@ -271,3 +271,27 @@ input, select, textarea { font: inherit; color: var(--charcoal); background: #ff
   .np { left: 240px; }
   .provider-frame.np { left: 260px; right: 20px; }
 }
+
+/* ---------- artist + album pages ---------- */
+.artist-tile { text-align: center; }
+.artist-hero { position: relative; margin: 0 -20px 20px; aspect-ratio: 1 / 1; max-height: 70vh; overflow: hidden; background: var(--plum); }
+.artist-hero .art { position: absolute; inset: 0; border-radius: 0; aspect-ratio: auto; height: 100%; }
+.artist-hero-text { position: absolute; left: 20px; right: 20px; bottom: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; color: #fff; }
+.artist-hero-text h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(34px, 10vw, 64px); line-height: 1; margin: 0; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45); }
+.artist-hero::after { content: ""; position: absolute; inset: 45% 0 0; background: linear-gradient(transparent, rgba(30, 12, 31, 0.75)); pointer-events: none; }
+.artist-hero-text { z-index: 1; }
+.play-round { width: 56px; height: 56px; border-radius: 28px; background: var(--copper-light); color: var(--plum); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.album-head { display: grid; gap: 14px; justify-items: center; text-align: center; margin: 8px 0 18px; }
+.album-head .art { width: min(72vw, 300px); box-shadow: 0 18px 40px rgba(38, 34, 42, 0.18); }
+.album-title { font-family: var(--font-display); font-weight: 700; font-size: 24px; line-height: 1.15; margin: 0; }
+.album-artist { color: var(--copper-text); font-size: 19px; text-decoration: none; }
+.album-meta { font-size: 13px; color: var(--muted); }
+.album-actions { display: flex; gap: 12px; width: 100%; max-width: 420px; }
+.album-actions .btn { flex: 1; background: var(--ivory-2); color: var(--plum); }
+.album-foot { font-size: 13px; color: var(--muted); margin-top: 18px; }
+@media (min-width: 720px) {
+  .artist-hero { margin: 0 0 24px; border-radius: 16px; aspect-ratio: 16 / 7; }
+  .album-head { grid-template-columns: 260px 1fr; justify-items: start; text-align: left; align-items: end; }
+  .album-head .art { width: 260px; }
+}
+@media (min-width: 960px) { .artist-hero { margin: 0 0 28px; } }

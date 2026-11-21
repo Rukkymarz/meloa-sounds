@@ -42,7 +42,7 @@ export function Shelf({ title, tracks, href }: { title: string; tracks: Track[];
 }
 
 /** Compact song rows. `paged` lays them out four-high and swipes sideways, like Apple Music charts. */
-export function SongList({ title, tracks, href, ranked = false, paged = false, showHow = false }: { title?: string; tracks: Track[]; href?: string; ranked?: boolean; paged?: boolean; showHow?: boolean }) {
+export function SongList({ title, tracks, href, ranked = false, paged = false, showHow = false, numbered = false }: { title?: string; tracks: Track[]; href?: string; ranked?: boolean; paged?: boolean; showHow?: boolean; numbered?: boolean }) {
   const { playList, current } = usePlayer();
   if (!tracks.length) return null;
   return (
@@ -54,8 +54,8 @@ export function SongList({ title, tracks, href, ranked = false, paged = false, s
           return (
             <li key={t.id} style={{ display: "contents" }}>
               <button className={`song ${current?.id === t.id ? "playing" : ""}`} onClick={() => playList(tracks, i)}>
-                {ranked && <span className="rank">{i + 1}</span>}
-                <Artwork src={t.artwork} title={t.title} round={t.kind === "station"} />
+                {(ranked || numbered) && <span className="rank">{i + 1}</span>}
+                {!numbered && <Artwork src={t.artwork} title={t.title} round={t.kind === "station"} />}
                 <span className="song-text">
                   <strong>{t.title}</strong>
                   <span>

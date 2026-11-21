@@ -18,6 +18,7 @@ const TABS = [
 function isActive(path: string, href: string) {
   if (href === "/") return path === "/";
   if (href === "/new") return path.startsWith("/new") || path.startsWith("/genre") || path.startsWith("/charts");
+  if (href === "/search") return path.startsWith("/search") || path.startsWith("/artist") || path.startsWith("/album");
   return path.startsWith(href);
 }
 

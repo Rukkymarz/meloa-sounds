@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       results,
-      artist: artistHit ? { ...artistHit.artist, top: artistHit.top } : null,
+      artist: artistHit ? { ...artistHit.artist, top: artistHit.top.slice(0, 10), albums: artistHit.albums.slice(0, 20), singles: artistHit.singles.slice(0, 20), related: artistHit.related } : null,
       songs: results.filter((t) => t.kind === "song"),
       mixes: results.filter((t) => t.kind === "mix"),
       stations: results.filter((t) => t.kind === "station"),

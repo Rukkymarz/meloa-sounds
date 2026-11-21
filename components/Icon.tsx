@@ -44,6 +44,7 @@ const P: Record<string, React.ReactNode> = {
   ),
   spin: <path d="M12 3a9 9 0 1 0 9 9" className="spinner" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  shuffle: <path d="M16 4h4v4M4 20 20 4M20 16v4h-4M14.5 14.5 20 20M4 4l5 5" />,
 };
 
 export function Icon({ name, size = 24, label }: { name: string; size?: number; label?: string }) {
