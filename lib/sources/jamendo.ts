@@ -43,5 +43,9 @@ export async function searchJamendo(q: string, opts: { tags?: string; limit?: nu
   if (opts.tags) p.set("tags", opts.tags);
   if (!q) p.set("order", "popularity_month");
   const r = await getJson(`${BASE}/tracks/?${p}`);
+  // Jamendo answers 200 even on errors; the real status is in the response headers block.
+  if (r.headers?.status && r.headers.status !== "success") {
+    throw new Error(`Jamendo: ${r.headers.error_message || r.headers.warnings || r.headers.status} (code ${r.headers.code})`);
+  }
   return (r.results || []).filter((t: any) => t.audio).map(toTrack);
 }
