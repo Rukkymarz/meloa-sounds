@@ -61,3 +61,26 @@ export async function deezerArtistTop(name: string, limit = 10): Promise<Track[]
   const r = await getJson(`${BASE}/artist/${a.id}/top?limit=${limit}`);
   return (r.data || []).map(toTrack);
 }
+
+export interface ArtistHit {
+  id: number;
+  name: string;
+  picture?: string;
+  fans?: number;
+  albums?: number;
+}
+
+/** If the search looks like an artist name, return that artist and their top songs (metadata; full songs found on tap). */
+export async function deezerArtistMatch(q: string, limit = 12): Promise<{ artist: ArtistHit; top: Track[] } | null> {
+  const fold = (s: string) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const s = await getJson(`${BASE}/search/artist?q=${enc(q)}&limit=3`, { revalidate: 86400 });
+  const want = fold(q);
+  const a = (s.data || []).find((x: any) => fold(x.name) === want) || (s.data || []).find((x: any) => fold(x.name).startsWith(want) && want.length >= 3);
+  if (!a) return null;
+  const r = await getJson(`${BASE}/artist/${a.id}/top?limit=${limit}`);
+  const top: Track[] = (r.data || []).filter((t: any) => t.readable !== false).map(toTrack);
+  return {
+    artist: { id: a.id, name: a.name, picture: a.picture_xl || a.picture_big || a.picture_medium, fans: a.nb_fan, albums: a.nb_album },
+    top,
+  };
+}

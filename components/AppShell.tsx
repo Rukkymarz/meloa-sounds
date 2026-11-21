@@ -96,7 +96,7 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
 }
 
 function MiniPlayer() {
-  const { current, status, error, toggle, next, canControl, setNowPlayingOpen, position, duration } = usePlayer();
+  const { current, status, error, toggle, next, canControl, setNowPlayingOpen, position, duration, needsSound, turnOnSound } = usePlayer();
   if (!current) return null;
   const pct = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
   return (
@@ -108,7 +108,12 @@ function MiniPlayer() {
           <span>{error ? <span className="mini-err">{error}</span> : current.artist}</span>
         </span>
       </button>
-      {canControl && (
+      {needsSound && (
+        <button className="sound-btn" onClick={turnOnSound}>
+          Turn on sound
+        </button>
+      )}
+      {canControl && !needsSound && (
         <button className="icon-btn" onClick={toggle} aria-label={status === "playing" ? "Pause" : "Play"}>
           <Icon name={status === "loading" ? "spin" : status === "playing" ? "pause" : "play"} size={26} />
         </button>

@@ -8,7 +8,7 @@ import { searchArchive } from "@/lib/sources/archive";
 import { searchCcmixter } from "@/lib/sources/ccmixter";
 import { searchMixcloud } from "@/lib/sources/mixcloud";
 import { searchRadio } from "@/lib/sources/radio";
-import { searchDeezer } from "@/lib/sources/deezer";
+import { searchDeezer, deezerArtistMatch } from "@/lib/sources/deezer";
 import { searchAudiomack } from "@/lib/sources/audiomack";
 
 export const runtime = "nodejs";
@@ -37,12 +37,14 @@ export async function GET(req: NextRequest) {
   if (type === "all" || type === "mix") tasks.mixcloud = searchMixcloud(q, 10);
   if (type === "all" || type === "station") tasks.radio = searchRadio({ q, limit: 10 });
 
-  const { tracks, status } = await gather(tasks);
+  const artistP = type === "all" || type === "song" ? deezerArtistMatch(q).catch(() => null) : Promise.resolve(null);
+  const [{ tracks, status }, artistHit] = await Promise.all([gather(tasks), artistP]);
   const results = mergeAndRank(fullOnly(tracks), q).slice(0, 80);
 
   return NextResponse.json(
     {
       results,
+      artist: artistHit ? { ...artistHit.artist, top: artistHit.top } : null,
       songs: results.filter((t) => t.kind === "song"),
       mixes: results.filter((t) => t.kind === "mix"),
       stations: results.filter((t) => t.kind === "station"),

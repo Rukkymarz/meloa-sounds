@@ -22,7 +22,7 @@ function parseLrc(lrc: string) {
 
 export function NowPlaying() {
   const p = usePlayer();
-  const { current, status, error, position, duration, toggle, next, prev, seek, canControl, setNowPlayingOpen, isSaved, toggleSave } = p;
+  const { current, status, error, position, duration, toggle, next, prev, seek, canControl, setNowPlayingOpen, isSaved, toggleSave, needsSound, turnOnSound } = p;
   const [lyrics, setLyrics] = useState<{ t: number; line: string }[] | null>(null);
   const [plain, setPlain] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -130,6 +130,11 @@ export function NowPlaying() {
         </div>
       )}
 
+      {needsSound && (
+        <button className="np-handoff" onClick={turnOnSound}>
+          Turn on sound
+        </button>
+      )}
       {error && <p className="np-error" role="status">{error}</p>}
 
       <p className="np-credit">

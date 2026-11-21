@@ -1,5 +1,5 @@
 import { getJson, enc } from "../http";
-import { cleanArtist, cleanTitle, isoDuration, similarity } from "../normalize";
+import { cleanArtist, cleanTitle, isoDuration } from "../normalize";
 import type { Track } from "../types";
 
 // YouTube Data API v3 + the official IFrame player.
@@ -56,17 +56,29 @@ export async function matchYouTube(artist: string, title: string, expectedSec?: 
   const cands = await details(ids);
 
   const a = cleanArtist(artist);
+  // Coverage: how much of the wanted title/artist appears in the candidate (extra words like
+  // "Official Video" or "fka Buju" no longer count against a match).
+  const words = (x: string) => x.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\(.*?\)|\[.*?\]/g, " ").replace(/\b(feat|ft|featuring)\b.*$/, "").split(/[^a-z0-9]+/).filter(Boolean);
+  const cover = (want: string, have: string) => {
+    const w = words(want);
+    const h = new Set(words(have));
+    return w.length ? w.filter((t) => h.has(t)).length / w.length : 0;
+  };
+  const leadArtist = a.split(/,|&| x | and /i)[0].trim();
   let best: { c: Candidate; score: number } | null = null;
   for (const c of cands) {
     if (!c.embeddable || c.durationSec < 60) continue; // full tracks only
     if (BAD.test(c.title) && !BAD.test(title)) continue;
-    let score = similarity(c.title, title) * 2 + similarity(c.title + " " + c.channel, a);
+    const t = cover(title, c.title);
+    const ar = Math.max(cover(leadArtist, `${c.title} ${c.channel}`), cover(a, `${c.title} ${c.channel}`));
+    if (t < 0.75 || ar < 0.5) continue;
+    let score = t * 2 + ar * 1.5;
     const ch = c.channel.toLowerCase();
-    if (ch.endsWith(" - topic")) score += 1.2; // auto-generated official audio
-    if (/vevo$/i.test(c.channel)) score += 1;
-    if (similarity(cleanArtist(c.channel), a) > 0.6) score += 0.8; // artist's own channel
+    if (ch.endsWith(" - topic")) score += 1; // auto-generated official audio
+    if (/vevo$/i.test(c.channel)) score += 0.8;
+    if (cover(leadArtist, c.channel) >= 0.99) score += 0.8; // artist's own channel
     if (/official/i.test(c.title)) score += 0.3;
-    if (/\blive\b/i.test(c.title) && !/\blive\b/i.test(title)) score -= 0.8;
+    if (/\b(live|remix|reprise)\b/i.test(c.title) && !/\b(live|remix|reprise)\b/i.test(title)) score -= 1;
     if (expectedSec) {
       const diff = Math.abs(c.durationSec - expectedSec) / expectedSec;
       if (diff > 0.35) continue;
@@ -74,7 +86,7 @@ export async function matchYouTube(artist: string, title: string, expectedSec?: 
     }
     if (!best || score > best.score) best = { c, score };
   }
-  if (!best || best.score < 1.6) return null;
+  if (!best) return null;
   const c = best.c;
   return {
     id: `youtube:${c.videoId}`,

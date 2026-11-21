@@ -6,6 +6,16 @@ import { matchYouTube } from "./sources/youtube";
 import { resolveArchive } from "./sources/archive";
 import { similarity } from "./normalize";
 import { supabaseAdmin } from "./supabase";
+import { after } from "next/server";
+
+// Save in the background after the response is sent, so playback starts sooner.
+function later(fn: () => Promise<unknown>) {
+  try {
+    after(() => fn().catch(() => {}));
+  } catch {
+    fn().catch(() => {});
+  }
+}
 import type { Track } from "./types";
 
 /**
@@ -68,9 +78,9 @@ export async function findFullSource(meta: Pick<Track, "title" | "artist"> & Par
     (!meta.durationSec || !t.durationSec || Math.abs(t.durationSec - meta.durationSec) <= Math.max(10, meta.durationSec * 0.1));
 
   // 2. Audius
-  const audius = (await searchAudius(`${meta.artist} ${meta.title}`, 5).catch(() => [])).find(close);
+  const audius = (await Promise.race([searchAudius(`${meta.artist} ${meta.title}`, 5), new Promise<Track[]>((r) => setTimeout(() => r([]), 2500))]).catch(() => [] as Track[])).find(close);
   if (audius) {
-    await saveToCatalog(meta, audius);
+    later(() => saveToCatalog(meta, audius));
     return { ...audius, artwork: audius.artwork || meta.artwork };
   }
 
@@ -78,7 +88,7 @@ export async function findFullSource(meta: Pick<Track, "title" | "artist"> & Par
   if (audiomackEnabled()) {
     const am = (await searchAudiomack(`${meta.artist} ${meta.title}`, 5).catch(() => [])).find(close);
     if (am) {
-      await saveToCatalog(meta, am);
+      later(() => saveToCatalog(meta, am));
       return { ...am, artwork: am.artwork || meta.artwork };
     }
   }
@@ -87,10 +97,10 @@ export async function findFullSource(meta: Pick<Track, "title" | "artist"> & Par
   const yt = await matchYouTube(meta.artist, meta.title, meta.durationSec).catch(() => null);
   if (yt) {
     const withMeta = { ...yt, title: meta.title, artist: meta.artist, artwork: meta.artwork || yt.artwork };
-    await saveToCatalog(meta, withMeta);
+    later(() => saveToCatalog(meta, withMeta));
     return withMeta;
   }
 
-  await saveMiss(meta);
+  later(() => saveMiss(meta));
   return null;
 }

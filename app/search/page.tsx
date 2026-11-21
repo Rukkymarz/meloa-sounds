@@ -11,10 +11,18 @@ import { playLabel } from "@/lib/playinfo";
 
 const LINK = /^https:\/\/(www\.|m\.|music\.)?(youtube\.com|youtu\.be|audiomack\.com|soundcloud\.com|on\.soundcloud\.com|mixcloud\.com|[\w-]+\.bandcamp\.com|bandcamp\.com|boomplay\.com|open\.spotify\.com|audius\.co|(play\.)?mdundo\.com)\//i;
 
+interface ArtistResult {
+  id: number;
+  name: string;
+  picture?: string;
+  fans?: number;
+  top: Track[];
+}
 interface Results {
   songs: Track[];
   mixes: Track[];
   stations: Track[];
+  artist: ArtistResult | null;
 }
 
 export default function SearchPage() {
@@ -43,8 +51,8 @@ export default function SearchPage() {
         const r = await fetch(`/api/search?q=${encodeURIComponent(term)}&type=all`);
         const j = await r.json();
         if (id !== reqId.current) return;
-        setData({ songs: j.songs || [], mixes: j.mixes || [], stations: j.stations || [] });
-        if (!j.results?.length) setMsg(`Nothing full-length found for "${term}". Paste a YouTube, Audiomack or Boomplay link to add a song.`);
+        setData({ songs: j.songs || [], mixes: j.mixes || [], stations: j.stations || [], artist: j.artist || null });
+        if (!j.results?.length && !j.artist) setMsg(`Nothing full-length found for "${term}". Paste a YouTube, Audiomack or Boomplay link to add a song.`);
       } catch {
         if (id === reqId.current) setMsg("Search isn't reachable right now. Check your connection and try again.");
       } finally {
@@ -115,9 +123,26 @@ export default function SearchPage() {
         </section>
       )}
 
+      {data?.artist && (
+        <section className="artist-head" aria-label={data.artist.name}>
+          <Artwork src={data.artist.picture} title={data.artist.name} round />
+          <div>
+            <h2 className="artist-name">{data.artist.name}</h2>
+            {data.artist.fans ? <p className="muted small">{new Intl.NumberFormat("en", { notation: "compact" }).format(data.artist.fans)} fans on Deezer</p> : null}
+            {data.artist.top.length > 0 && (
+              <button className="btn btn-plum" onClick={() => playList(data.artist!.top, 0)}>
+                <Icon name="play" size={18} />
+                Play
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+      {data?.artist && <SongList title="Top songs" tracks={data.artist.top} ranked />}
+
       {data && top && (
         <>
-          <section aria-label="Top result">
+          {!data.artist && <section aria-label="Top result">
             <h2 className="h-section" style={{ marginBottom: 10 }}>Top result</h2>
             <button className="top-match" onClick={() => playList(topList, 0)}>
               <Artwork src={top.artwork} title={top.title} round={top.kind === "station"} />
@@ -128,9 +153,9 @@ export default function SearchPage() {
                 <span className="footnote">{playLabel(top)}</span>
               </span>
             </button>
-          </section>
+          </section>}
 
-          <SongList title="Songs" tracks={data.songs.slice(0, 30)} showHow />
+          <SongList title={data.artist ? "More songs" : "Songs"} tracks={data.songs.filter((t) => !data.artist?.top.some((x) => x.id === t.id)).slice(0, 30)} showHow />
           <SongList title="DJ mixes and shows" tracks={data.mixes.slice(0, 15)} showHow />
           <SongList title="Radio stations" tracks={data.stations.slice(0, 15)} showHow />
 

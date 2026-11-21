@@ -28,6 +28,8 @@ interface PlayerCtx {
   isSaved: (t: Track | null) => boolean;
   toggleSave: (t: Track) => void;
   storageOk: boolean;
+  needsSound: boolean;
+  turnOnSound: () => void;
 }
 
 const Ctx = createContext<PlayerCtx | null>(null);
@@ -97,6 +99,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [saved, setSaved] = useState<Track[]>([]);
   const [history, setHistory] = useState<Track[]>([]);
   const [storageOk, setStorageOk] = useState(true);
+  const [needsSound, setNeedsSound] = useState(false);
+  const soundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytRef = useRef<any>(null);
@@ -105,6 +109,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const indexRef = useRef(-1);
   queueRef.current = queue;
   indexRef.current = index;
+
+  // Load YouTube's player script early so the first YouTube song starts faster.
+  useEffect(() => {
+    const t = setTimeout(() => loadYouTubeApi(), 1200);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const s = readList(SAVED_KEY);
@@ -173,6 +183,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [current]);
 
   const stopAll = () => {
+    if (soundTimer.current) clearTimeout(soundTimer.current);
+    setNeedsSound(false);
     const a = audioRef.current;
     if (a) {
       a.pause();
@@ -207,6 +219,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
     setCurrent(track);
     remember(track);
+    prefetchNext();
 
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -228,6 +241,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (!mount) return;
       if (ytRef.current?.loadVideoById) {
         ytRef.current.loadVideoById(pb.videoId);
+        if (ytRef.current.isMuted?.()) setNeedsSound(true);
       } else {
         const el = document.createElement("div");
         mount.innerHTML = "";
@@ -236,10 +250,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           videoId: pb.videoId,
           width: "100%",
           height: "100%",
-          playerVars: { autoplay: 1, playsinline: 1, rel: 0, origin: window.location.origin },
+          // Meloa draws its own controls; YouTube's video, ads and branding stay visible.
+          playerVars: { autoplay: 1, playsinline: 1, rel: 0, controls: 0, fs: 0, iv_load_policy: 3, disablekb: 1, origin: window.location.origin },
           events: {
             onStateChange: (e: any) => {
-              if (e.data === 1) setStatus("playing");
+              if (e.data === 1) {
+                setStatus("playing");
+                if (soundTimer.current) clearTimeout(soundTimer.current);
+              }
               if (e.data === 2) setStatus("paused");
               if (e.data === 0) goTo(indexRef.current + 1);
             },
@@ -251,6 +269,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           },
         });
       }
+      // iPhones block sound when playback starts after a network wait. If YouTube hasn't
+      // started within ~1.8s, start it muted and offer a one-tap "Turn on sound".
+      if (soundTimer.current) clearTimeout(soundTimer.current);
+      soundTimer.current = setTimeout(() => {
+        const yt = ytRef.current;
+        if (!yt?.getPlayerState || yt.getPlayerState() === 1) return;
+        try {
+          yt.mute();
+          yt.playVideo();
+          setNeedsSound(true);
+        } catch {}
+      }, 1800);
     } else if (pb.kind === "embed") {
       setStatus("playing"); // the platform's own player takes over
     } else if (pb.kind === "external") {
@@ -260,6 +290,34 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setError("This song can't be played.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Find the next song's full version in the background, so tapping Next starts instantly.
+  function prefetchNext() {
+    const i = indexRef.current + 1;
+    const nxt = queueRef.current[i];
+    if (!nxt || nxt.playback.kind !== "resolve") return;
+    fetch(`/api/resolve?source=${nxt.playback.source}&id=${encodeURIComponent(nxt.playback.id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!j?.track || queueRef.current[i]?.id !== nxt.id) return;
+        const ready = { ...nxt, ...j.track, id: nxt.id, title: nxt.title, artist: nxt.artist, artwork: nxt.artwork || j.track.artwork };
+        const q = [...queueRef.current];
+        q[i] = ready;
+        queueRef.current = q;
+        setQueue(q);
+      })
+      .catch(() => {});
+  }
+
+  const turnOnSound = useCallback(() => {
+    const yt = ytRef.current;
+    try {
+      yt?.unMute();
+      yt?.setVolume?.(100);
+      yt?.playVideo();
+    } catch {}
+    setNeedsSound(false);
   }, []);
 
   const goTo = useCallback(
@@ -327,7 +385,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         current, queue, index, status, error, position, duration,
         nowPlayingOpen, setNowPlayingOpen,
         playList, playOne, toggle, next, prev, seek, canControl, ytMountRef,
-        saved, history, isSaved, toggleSave, storageOk,
+        saved, history, isSaved, toggleSave, storageOk, needsSound, turnOnSound,
       }}
     >
       {children}
