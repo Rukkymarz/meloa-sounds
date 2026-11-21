@@ -92,6 +92,8 @@ export function checkItem(it: ImportItem): { status: ItemStatus; reasons: string
   if (!it.durationSec) review("No expected runtime from the source.");
   else if (it.kind !== "mix" && it.durationSec < MIN_FULL_SEC) bad(`Runtime ${it.durationSec}s looks like a clip.`);
   if (/\b(preview|snippet|teaser|clip|excerpt)\b/i.test(it.title)) review("Title suggests a preview or excerpt.");
+  if (/^\d+$|^unknown artist$/i.test(it.artist.trim())) review(`Artist "${it.artist}" needs a real performer name.`);
+  if (/^(wax cylinder recording|recording|untitled|track \d+)$|^[a-z]+-\d+[a-z]?$/i.test(it.title.trim())) review(`Title "${it.title}" looks like a catalogue label, not a song title.`);
 
   if (!it.releaseYear) review("Original release year unknown (needed for decade browsing).");
   else if (it.releaseYear < 1860 || it.releaseYear > new Date().getFullYear() + 1) bad(`Release year ${it.releaseYear} is out of range.`);
@@ -179,7 +181,9 @@ export async function runBatch(batchId: string, provider: string, items: ImportI
           expected_sec: it.durationSec ?? null,
           source_url: it.sourceUrl,
           import_batch: batchId,
-          verification: existingSrc?.verification === "verified" || existingSrc?.verification === "rejected" ? existingSrc.verification : status === "ready" ? "pending" : "needs_review",
+          // Metadata problems always hold a song back; a passed or failed playback check is kept otherwise.
+          verification:
+            status !== "ready" ? "needs_review" : existingSrc?.verification === "verified" || existingSrc?.verification === "rejected" ? existingSrc.verification : "pending",
           verify_report: existingSrc ? undefined : { reasons },
           last_checked: new Date().toISOString(),
         },
