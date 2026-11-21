@@ -77,30 +77,52 @@ export async function findFullSource(meta: Pick<Track, "title" | "artist"> & Par
     similarity(t.artist, meta.artist) >= 0.6 &&
     (!meta.durationSec || !t.durationSec || Math.abs(t.durationSec - meta.durationSec) <= Math.max(10, meta.durationSec * 0.1));
 
-  // 2. Audius
-  const audius = (await Promise.race([searchAudius(`${meta.artist} ${meta.title}`, 5), new Promise<Track[]>((r) => setTimeout(() => r([]), 2500))]).catch(() => [] as Track[])).find(close);
+  // 2–4. Ask Audius, Audiomack and YouTube at the same time (no waiting in line),
+  // then use the best legal source: free full track first, platform players after.
+  const q = `${meta.artist} ${meta.title}`;
+  let timedOut = false;
+  const within = <T,>(p: Promise<T>, ms: number, fallback: T) =>
+    new Promise<T>((resolve) => {
+      const timer = setTimeout(() => {
+        timedOut = true;
+        resolve(fallback);
+      }, ms);
+      p.then(
+        (v) => {
+          clearTimeout(timer);
+          resolve(v);
+        },
+        () => {
+          clearTimeout(timer);
+          timedOut = true; // a network error is not proof the song doesn't exist
+          resolve(fallback);
+        },
+      );
+    });
+  const [audiusList, amList, yt] = await Promise.all([
+    within(searchAudius(q, 5), 2500, [] as Track[]),
+    audiomackEnabled() ? within(searchAudiomack(q, 5), 3000, [] as Track[]) : Promise.resolve([] as Track[]),
+    within(matchYouTube(meta.artist, meta.title, meta.durationSec), 6000, null as Track | null),
+  ]);
+
+  const audius = audiusList.find(close);
   if (audius) {
     later(() => saveToCatalog(meta, audius));
+    if (yt) later(() => saveToCatalog(meta, { ...yt, title: meta.title, artist: meta.artist }));
     return { ...audius, artwork: audius.artwork || meta.artwork };
   }
-
-  // 3. Audiomack (official embed)
-  if (audiomackEnabled()) {
-    const am = (await searchAudiomack(`${meta.artist} ${meta.title}`, 5).catch(() => [])).find(close);
-    if (am) {
-      later(() => saveToCatalog(meta, am));
-      return { ...am, artwork: am.artwork || meta.artwork };
-    }
+  const am = amList.find(close);
+  if (am) {
+    later(() => saveToCatalog(meta, am));
+    return { ...am, artwork: am.artwork || meta.artwork };
   }
-
-  // 4. YouTube (official full upload)
-  const yt = await matchYouTube(meta.artist, meta.title, meta.durationSec).catch(() => null);
   if (yt) {
     const withMeta = { ...yt, title: meta.title, artist: meta.artist, artwork: meta.artwork || yt.artwork };
     later(() => saveToCatalog(meta, withMeta));
     return withMeta;
   }
 
-  later(() => saveMiss(meta));
+  // Only remember "not found" when every source actually answered.
+  if (!timedOut) later(() => saveMiss(meta));
   return null;
 }

@@ -48,16 +48,24 @@ export function mergeAndRank(tracks: Track[], q = ""): Track[] {
   return merged.sort((a, b) => score(b) - score(a));
 }
 
-/** Run every source in parallel; a slow or broken source never breaks the search. */
-export async function gather(tasks: Record<string, Promise<Track[]>>) {
+/** Run every source in parallel; a slow or broken source never breaks or delays the search.
+ *  Each source gets `budgetMs`; anything slower is reported as "slow" and left out. */
+export async function gather(tasks: Record<string, Promise<Track[]>>, budgetMs = 4000) {
   const names = Object.keys(tasks);
-  const settled = await Promise.allSettled(Object.values(tasks));
+  const t0 = Date.now();
+  const timed = names.map((n) =>
+    Promise.race([
+      tasks[n].then((v) => ({ v, ms: Date.now() - t0 })),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`slow (>${budgetMs}ms)`)), budgetMs)),
+    ]),
+  );
+  const settled = await Promise.allSettled(timed);
   const tracks: Track[] = [];
   const status: Record<string, string> = {};
   settled.forEach((r, i) => {
     if (r.status === "fulfilled") {
-      tracks.push(...r.value);
-      status[names[i]] = r.value.length ? "ok" : "empty";
+      tracks.push(...r.value.v);
+      status[names[i]] = `${r.value.v.length ? "ok" : "empty"} ${r.value.ms}ms`;
     } else {
       status[names[i]] = `error: ${String(r.reason?.message || r.reason).slice(0, 160)}`;
       console.warn(`[meloa] ${names[i]} failed:`, r.reason?.message || r.reason);
