@@ -45,6 +45,22 @@ export async function appleChart(country: string, limit = 100): Promise<Track[]>
       lastErr = e;
     }
   }
+  // Legacy iTunes RSS (same Apple charts, older format) as a last resort
+  try {
+    const r = await getJson(`https://itunes.apple.com/${cc}/rss/topsongs/limit=${Math.min(limit, 100)}/json`, { revalidate: 3600 });
+    const entries: any[] = r.feed?.entry || [];
+    if (entries.length)
+      return entries.map((e: any, i: number) =>
+        nameRow("deezer", e["im:artist"]?.label || "", e["im:name"]?.label || "", {
+          id: `apple:${cc}:${e.id?.attributes?.["im:id"] || i}`,
+          artwork: String(e["im:image"]?.slice(-1)[0]?.label || "").replace(/\d+x\d+bb/, "600x600bb") || undefined,
+          genres: e.category?.attributes?.label ? [e.category.attributes.label] : [],
+          pageUrl: e.link?.attributes?.href,
+        }),
+      );
+  } catch (e) {
+    lastErr = e;
+  }
   throw lastErr;
 }
 

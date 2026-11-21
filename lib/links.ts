@@ -131,13 +131,7 @@ export async function resolveLink(raw: string): Promise<Track> {
       artist: "Spotify",
       artwork: o?.thumbnail_url,
       tier: 3,
-      playback: {
-        kind: "embed",
-        provider: "spotify",
-        src: `https://open.spotify.com/embed/${type}/${id}`,
-        height: type === "track" ? 152 : 380,
-        note: "Spotify plays full tracks only on desktop browsers logged into Spotify; phones get a preview.",
-      },
+      playback: { kind: "external", provider: "spotify", url: u.toString() },
       pageUrl: u.toString(),
       kind: type === "track" ? "song" : "mix",
     };

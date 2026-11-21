@@ -37,10 +37,10 @@ export default function Admin() {
 
   return (
     <>
-      <h1>Review</h1>
-      <div className="search">
+      <h1 className="h-large" style={{ margin: "16px 0 12px" }}>Review</h1>
+      <div className="select-row">
         <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Admin token" aria-label="Admin token" />
-        <button className="btn" onClick={load}>Load</button>
+        <button className="btn-submit" onClick={load}>Load</button>
       </div>
       {msg && <p className="hint">{msg}</p>}
       {data && (
@@ -52,7 +52,7 @@ export default function Admin() {
               <p className="muted">{s.email} · terms {s.terms_version} · {new Date(s.created_at).toLocaleString()}</p>
               {s.listen_url && <audio controls src={s.listen_url} style={{ width: "100%" }} />}
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button className="btn" onClick={() => act(s.id, "approve")}>Approve</button>
+                <button className="btn-submit" onClick={() => act(s.id, "approve")}>Approve</button>
                 <button className="chip" onClick={() => act(s.id, "reject")}>Reject</button>
               </div>
             </div>

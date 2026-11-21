@@ -7,7 +7,7 @@ const EMAIL = process.env.CONTACT_EMAIL || "the site owner";
 export default function Legal() {
   return (
     <div className="prose">
-      <h1>Terms, credits & copyright</h1>
+      <h1 className="h-large" style={{ margin: "16px 0 12px" }}>Terms, credits & copyright</h1>
 
       <h2>How {NAME} plays music</h2>
       <p>
@@ -16,7 +16,7 @@ export default function Legal() {
       </p>
       <ul>
         <li><strong>Free, openly licensed audio</strong> — Audius (artist uploads, via its public API), Jamendo, Openverse, ccMixter and the Internet Archive (Creative Commons or public domain). Licence and credit are shown on the Now Playing screen.</li>
-        <li><strong>Official players</strong> — YouTube, Audiomack, Mixcloud, SoundCloud, Bandcamp, Boomplay and Spotify play inside their own embedded players, with their own ads and controls, so plays and royalties go to the rights holders. YouTube videos are always shown, never turned into hidden audio.</li>
+        <li><strong>Official players</strong> — YouTube, Audiomack, Mixcloud, SoundCloud, Bandcamp and Boomplay play inside their own embedded players, with their own ads and controls, so plays and royalties go to the rights holders. YouTube videos are always shown, never turned into hidden audio. Spotify links open in the Spotify app.</li>
         <li><strong>Live radio</strong> — public station streams listed by Radio Browser.</li>
         <li><strong>Artist uploads</strong> — songs submitted directly by their owners under the licence below.</li>
         <li><strong>Information only</strong> — song details from Deezer and MusicBrainz, lyrics from LRCLIB. {NAME} never plays 30-second previews.</li>

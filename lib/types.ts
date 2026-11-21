@@ -27,6 +27,7 @@ export type Playback =
   | { kind: "youtube"; videoId: string }
   | { kind: "embed"; provider: SourceName; src: string; height: number; note?: string }
   | { kind: "resolve"; source: SourceName; id: string } // resolved on click (saves API quota)
+  | { kind: "external"; provider: SourceName; url: string } // hand off to another app (e.g. Open in Spotify)
   | { kind: "none" };
 
 /** 1 = full, free, no ads · 2 = full, platform ads · 3 = platform embed · 4 = metadata only */

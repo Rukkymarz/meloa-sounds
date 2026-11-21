@@ -61,7 +61,7 @@ export default function SubmitPage() {
 
   return (
     <>
-      <h1>Upload your music</h1>
+      <h1 className="h-large" style={{ margin: "16px 0 12px" }}>Upload your music</h1>
       <p className="muted prose">
         Independent artists can add their own songs to Meloa for free streaming. Every upload is reviewed before it
         goes live. You keep all rights and can remove your track any time.
@@ -123,7 +123,7 @@ export default function SubmitPage() {
           Also let listeners download this track (optional).
         </label>
 
-        <button className="btn" disabled={state === "sending" || !audio}>
+        <button className="btn-submit" disabled={state === "sending" || !audio}>
           {state === "sending" ? "Uploading…" : "Submit for review"}
         </button>
         {msg && <p className={state === "done" ? "ok" : "hint"}>{msg}</p>}

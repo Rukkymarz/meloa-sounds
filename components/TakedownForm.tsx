@@ -56,7 +56,7 @@ export function TakedownForm() {
         <input type="checkbox" name="goodFaith" required />
         I believe in good faith that this use is not authorised by the copyright owner, its agent or the law, and the information above is accurate.
       </label>
-      <button className="btn" disabled={busy}>Send request</button>
+      <button className="btn-submit" disabled={busy}>Send request</button>
       {msg && <p className="hint">{msg}</p>}
     </form>
   );

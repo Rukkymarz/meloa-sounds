@@ -13,13 +13,21 @@ interface PlayerCtx {
   error: string | null;
   position: number;
   duration: number;
+  nowPlayingOpen: boolean;
+  setNowPlayingOpen: (open: boolean) => void;
   playList: (list: Track[], startAt: number) => void;
   playOne: (t: Track) => void;
   toggle: () => void;
   next: () => void;
   prev: () => void;
   seek: (sec: number) => void;
+  canControl: boolean;
   ytMountRef: React.RefObject<HTMLDivElement | null>;
+  saved: Track[];
+  history: Track[];
+  isSaved: (t: Track | null) => boolean;
+  toggleSave: (t: Track) => void;
+  storageOk: boolean;
 }
 
 const Ctx = createContext<PlayerCtx | null>(null);
@@ -53,6 +61,30 @@ function loadYouTubeApi() {
   return ytReady;
 }
 
+// Library storage lives in this browser (no account system yet).
+const SAVED_KEY = "meloa:saved";
+const HISTORY_KEY = "meloa:history";
+const slim = (t: Track): Track => {
+  const { alternates, ...rest } = t;
+  return rest;
+};
+function readList(key: string): Track[] | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as Track[]) : [];
+  } catch {
+    return null;
+  }
+}
+function writeList(key: string, list: Track[]) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(list));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [queue, setQueue] = useState<Track[]>([]);
   const [index, setIndex] = useState(-1);
@@ -61,6 +93,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+  const [saved, setSaved] = useState<Track[]>([]);
+  const [history, setHistory] = useState<Track[]>([]);
+  const [storageOk, setStorageOk] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytRef = useRef<any>(null);
@@ -70,7 +106,32 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   queueRef.current = queue;
   indexRef.current = index;
 
-  // one shared <audio> element
+  useEffect(() => {
+    const s = readList(SAVED_KEY);
+    const h = readList(HISTORY_KEY);
+    if (s === null || h === null) setStorageOk(false);
+    setSaved(s || []);
+    setHistory(h || []);
+  }, []);
+
+  const remember = (t: Track) => {
+    setHistory((prev) => {
+      const next = [slim(t), ...prev.filter((x) => x.id !== t.id)].slice(0, 40);
+      writeList(HISTORY_KEY, next);
+      return next;
+    });
+  };
+
+  const isSaved = useCallback((t: Track | null) => !!t && saved.some((x) => x.id === t.id), [saved]);
+  const toggleSave = useCallback((t: Track) => {
+    setSaved((prev) => {
+      const next = prev.some((x) => x.id === t.id) ? prev.filter((x) => x.id !== t.id) : [slim(t), ...prev];
+      if (!writeList(SAVED_KEY, next)) setStorageOk(false);
+      return next;
+    });
+  }, []);
+
+  // one shared <audio> element for the whole app session
   useEffect(() => {
     const a = new Audio();
     a.preload = "auto";
@@ -81,8 +142,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const onPlay = () => setStatus("playing");
     const onPause = () => setStatus((s) => (s === "loading" ? s : "paused"));
     const onErr = () => {
+      if (!a.src) return;
       setStatus("error");
-      setError("This stream couldn't be played. Skipping…");
+      setError("This stream couldn't be played. Skipping to the next song.");
       setTimeout(() => goTo(indexRef.current + 1), 1500);
     };
     a.addEventListener("timeupdate", onTime);
@@ -93,12 +155,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     a.addEventListener("error", onErr);
     return () => {
       a.pause();
-      a.src = "";
+      a.removeAttribute("src");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // poll YouTube position
   useEffect(() => {
     if (current?.playback.kind !== "youtube") return;
     const id = setInterval(() => {
@@ -112,7 +173,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [current]);
 
   const stopAll = () => {
-    audioRef.current?.pause();
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.removeAttribute("src");
+      a.load();
+    }
     try {
       ytRef.current?.stopVideo?.();
     } catch {}
@@ -124,8 +190,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setPosition(0);
     setDuration(t.durationSec || 0);
     setStatus("loading");
+    setCurrent(t);
 
-    // resolve metadata-only rows (Deezer, Archive) to a full legal source
     let track = t;
     if (t.playback.kind === "resolve") {
       try {
@@ -134,13 +200,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         if (!r.ok) throw new Error(j.error);
         track = { ...t, ...j.track, id: t.id, title: t.title || j.track.title, artist: t.artist || j.track.artist, artwork: t.artwork || j.track.artwork };
       } catch (e: any) {
-        setCurrent(t);
         setStatus("error");
-        setError(e.message || "No full version found.");
+        setError(e.message || "No full-length version found.");
         return;
       }
     }
     setCurrent(track);
+    remember(track);
 
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -157,7 +223,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       a.play().catch(() => setStatus("paused"));
     } else if (pb.kind === "youtube") {
       await loadYouTubeApi();
-      await new Promise((r) => setTimeout(r, 0)); // let the dock become visible first
+      await new Promise((r) => setTimeout(r, 0)); // let the video frame become visible first
       const mount = ytMountRef.current;
       if (!mount) return;
       if (ytRef.current?.loadVideoById) {
@@ -179,7 +245,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
             },
             onError: () => {
               setStatus("error");
-              setError("YouTube won't play this video here. Skipping…");
+              setError("YouTube won't play this video here. Skipping to the next song.");
               setTimeout(() => goTo(indexRef.current + 1), 1500);
             },
           },
@@ -187,9 +253,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       }
     } else if (pb.kind === "embed") {
       setStatus("playing"); // the platform's own player takes over
+    } else if (pb.kind === "external") {
+      setStatus("idle"); // handed off: shown with an "Open in …" button
     } else {
       setStatus("error");
-      setError("Not playable.");
+      setError("This song can't be played.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -198,7 +266,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     (i: number) => {
       const q = queueRef.current;
       if (i < 0 || i >= q.length) {
-        setStatus("paused");
+        setStatus((s) => (s === "playing" ? "paused" : s));
         return;
       }
       setIndex(i);
@@ -218,23 +286,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const playOne = useCallback((t: Track) => playList([t], 0), [playList]);
 
+  const kind = current?.playback.kind;
+  const canControl = kind === "audio" || kind === "youtube";
+
   const toggle = useCallback(() => {
-    const pb = current?.playback;
-    if (pb?.kind === "audio") {
+    if (kind === "audio") {
       const a = audioRef.current!;
       a.paused ? a.play() : a.pause();
-    } else if (pb?.kind === "youtube" && ytRef.current) {
+    } else if (kind === "youtube" && ytRef.current) {
       status === "playing" ? ytRef.current.pauseVideo() : ytRef.current.playVideo();
     }
-  }, [current, status]);
+  }, [kind, status]);
 
   const seek = useCallback(
     (sec: number) => {
-      if (current?.playback.kind === "audio" && audioRef.current) audioRef.current.currentTime = sec;
-      if (current?.playback.kind === "youtube") ytRef.current?.seekTo?.(sec, true);
+      if (kind === "audio" && audioRef.current) audioRef.current.currentTime = sec;
+      if (kind === "youtube") ytRef.current?.seekTo?.(sec, true);
       setPosition(sec);
     },
-    [current],
+    [kind],
   );
 
   const next = useCallback(() => goTo(indexRef.current + 1), [goTo]);
@@ -252,7 +322,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [toggle, next, prev]);
 
   return (
-    <Ctx.Provider value={{ current, queue, index, status, error, position, duration, playList, playOne, toggle, next, prev, seek, ytMountRef }}>
+    <Ctx.Provider
+      value={{
+        current, queue, index, status, error, position, duration,
+        nowPlayingOpen, setNowPlayingOpen,
+        playList, playOne, toggle, next, prev, seek, canControl, ytMountRef,
+        saved, history, isSaved, toggleSave, storageOk,
+      }}
+    >
       {children}
     </Ctx.Provider>
   );

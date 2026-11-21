@@ -1,10 +1,10 @@
 {
   "name": "Meloa Sounds",
   "short_name": "Meloa",
-  "description": "Every genre, full songs, free.",
+  "description": "Music from every corner of the world, free and full-length.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0E0E10",
-  "theme_color": "#0E0E10",
+  "background_color": "#FAF5EC",
+  "theme_color": "#FAF5EC",
   "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }
