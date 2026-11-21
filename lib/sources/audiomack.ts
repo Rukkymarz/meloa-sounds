@@ -128,7 +128,7 @@ async function fetchText(url: string, ms = 5000) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ms);
   try {
-    const r = await fetch(url, { headers: UA, signal: ctl.signal, redirect: "follow", cache: "no-store" });
+    const r = await fetch(url, { headers: UA, signal: ctl.signal, redirect: "follow", next: { revalidate: 3600 } });
     return { status: r.status, type: r.headers.get("content-type") || "", finalUrl: r.url, body: r.ok ? await r.text() : "" };
   } finally {
     clearTimeout(t);

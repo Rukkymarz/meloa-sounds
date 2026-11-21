@@ -107,13 +107,13 @@ export async function searchCurated(q: string, limit = 10): Promise<Track[]> {
 }
 
 /** Newest saved releases, optionally for one country (e.g. "NG"). */
-export async function listCurated(opts: { country?: string; limit?: number } = {}): Promise<Track[]> {
+export async function listCurated(opts: { country?: string; limit?: number; check?: boolean } = {}): Promise<Track[]> {
   const db = supabaseAdmin();
   if (!db) return [];
   let query = db.from("curated_releases").select(COLS).eq("active", true).order("added_at", { ascending: false }).limit(opts.limit ?? 20);
   if (opts.country) query = query.eq("country", opts.country);
   const { data } = await query;
-  const rows = await ensureChecked((data || []) as CuratedRow[]);
+  const rows = opts.check === false ? ((data || []) as CuratedRow[]) : await ensureChecked((data || []) as CuratedRow[]);
   return rows.map(curatedToTrack);
 }
 

@@ -11,7 +11,7 @@ export const revalidate = 3600;
 const DISCOVER = ["afrobeats", "amapiano", "hip-hop", "rnb", "pop", "latin", "k-pop", "gospel"];
 
 export default async function Home() {
-  const [d, audiomack] = await Promise.all([homeData(), listCurated({ limit: 20 }).catch(() => [])]);
+  const [d, audiomack] = await Promise.all([homeData(), listCurated({ limit: 20, check: false }).catch(() => [])]);
   const f = d.featured;
 
   return (

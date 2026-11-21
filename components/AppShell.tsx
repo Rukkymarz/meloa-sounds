@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { usePlayer } from "./PlayerProvider";
 import { Icon } from "./Icon";
@@ -33,6 +34,13 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
   const showsVideo = kind === "youtube";
   const showsEmbed = kind === "embed";
   const frameMode = nowPlayingOpen ? "np" : "dock";
+
+  // Home-screen app: register the service worker (fast launch + offline page).
+  useEffect(() => {
+    if ("serviceWorker" in navigator && location.protocol === "https:") {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
 
   return (
     <div className="shell" data-player={current ? "on" : "off"} data-frame={showsVideo || showsEmbed ? "on" : "off"}>

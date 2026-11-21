@@ -13,7 +13,8 @@ export const metadata: Metadata = {
   title: { default: NAME, template: `%s · ${NAME}` },
   description: "Music from every corner of the world, played through each platform's official, licensed player.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192", type: "image/png" }], apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }] },
+  formatDetection: { telephone: false },
   appleWebApp: { capable: true, title: "Meloa", statusBarStyle: "black-translucent" },
 };
 
