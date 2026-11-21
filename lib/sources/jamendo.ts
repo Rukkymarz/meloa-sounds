@@ -29,7 +29,7 @@ function toTrack(t: any): Track {
 }
 
 export async function searchJamendo(q: string, opts: { tags?: string; limit?: number } = {}): Promise<Track[]> {
-  const id = process.env.JAMENDO_CLIENT_ID;
+  const id = process.env.JAMENDO_CLIENT_ID?.trim();
   if (!id) return [];
   const p = new URLSearchParams({
     client_id: id,

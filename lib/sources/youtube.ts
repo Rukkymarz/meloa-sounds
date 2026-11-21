@@ -27,7 +27,7 @@ interface Candidate {
 }
 
 async function details(ids: string[]): Promise<Candidate[]> {
-  const key = process.env.YOUTUBE_API_KEY!;
+  const key = process.env.YOUTUBE_API_KEY!.trim();
   const r = await getJson(
     `${BASE}/videos?part=snippet,contentDetails,status&id=${ids.join(",")}&key=${key}`,
     { revalidate: 86400 },
@@ -45,7 +45,7 @@ async function details(ids: string[]): Promise<Candidate[]> {
 /** Find the best official full-length upload for a known song. Returns null if nothing trustworthy. */
 export async function matchYouTube(artist: string, title: string, expectedSec?: number): Promise<Track | null> {
   if (!youtubeEnabled()) return null;
-  const key = process.env.YOUTUBE_API_KEY!;
+  const key = process.env.YOUTUBE_API_KEY!.trim();
   const q = `${cleanArtist(artist)} ${cleanTitle(title)}`;
   const s = await getJson(
     `${BASE}/search?part=snippet&type=video&videoEmbeddable=true&videoCategoryId=10&maxResults=8&q=${enc(q)}&key=${key}`,

@@ -67,7 +67,7 @@ export async function appleChart(country: string, limit = 100): Promise<Track[]>
 // ---- YouTube: most popular music videos per region (videos.list chart=mostPopular: 1 quota unit) ----
 // These are playable immediately — no search quota spent.
 export async function youtubeTrending(region: string, limit = 50): Promise<Track[]> {
-  const key = process.env.YOUTUBE_API_KEY;
+  const key = process.env.YOUTUBE_API_KEY?.trim();
   if (!key) return [];
   const r = await getJson(
     `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&chart=mostPopular&videoCategoryId=10&regionCode=${enc(region.toUpperCase())}&maxResults=${Math.min(limit, 50)}&key=${key}`,
@@ -106,7 +106,7 @@ const COUNTRY_NAMES: Record<string, string> = {
 };
 
 export async function lastfmGeo(country: string, limit = 50): Promise<Track[]> {
-  const key = process.env.LASTFM_API_KEY;
+  const key = process.env.LASTFM_API_KEY?.trim();
   const name = COUNTRY_NAMES[country.toUpperCase()];
   if (!key || !name) return [];
   const r = await getJson(
