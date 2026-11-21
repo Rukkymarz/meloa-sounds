@@ -25,7 +25,9 @@ export function mergeAndRank(tracks: Track[], q = ""): Track[] {
     list.sort((a, b) => a.tier - b.tier);
     const [best, ...rest] = list;
     // keep the best metadata (artwork, ISRC) from whichever source had it
-    const art = best.artwork || rest.find((r) => r.artwork)?.artwork;
+    // prefer square album art over a YouTube video thumbnail
+    const albumArt = rest.find((r) => r.artwork && r.source !== "youtube")?.artwork;
+    const art = (best.source === "youtube" && albumArt) || best.artwork || rest.find((r) => r.artwork)?.artwork;
     const isrc = best.isrc || rest.find((r) => r.isrc)?.isrc;
     merged.push({ ...best, artwork: art, isrc, alternates: rest });
   }
