@@ -30,19 +30,69 @@ interface Results {
   artist: ArtistResult | null;
 }
 
+// Recent searches stay on this device; the last search is restored when you come back to the tab.
+const RECENT_KEY = "meloa:recent-searches";
+const LAST_KEY = "meloa:last-search";
+function readRecent(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
 export default function SearchPage() {
   const { playOne, playList } = usePlayer();
   const [q, setQ] = useState("");
+  const [recent, setRecent] = useState<string[]>([]);
+
+  useEffect(() => {
+    setRecent(readRecent());
+    try {
+      const last = sessionStorage.getItem(LAST_KEY);
+      if (last) setQ(last);
+    } catch {}
+  }, []);
+
+  const remember = (term: string) => {
+    const t = term.trim();
+    if (t.length < 2) return;
+    setRecent((prev) => {
+      const next = [t, ...prev.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 15);
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+  const clearRecent = () => {
+    setRecent([]);
+    try {
+      localStorage.removeItem(RECENT_KEY);
+    } catch {}
+  };
   const [data, setData] = useState<Results | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reqId = useRef(0);
+  const lastGood = useRef("");
+  const rememberRef = useRef(remember);
+  rememberRef.current = remember;
+
+  // Save the search when you play something from it, press Search, or leave the tab
+  // (not every half-typed word).
+  useEffect(() => () => {
+    if (lastGood.current) rememberRef.current(lastGood.current);
+  }, []);
 
   const term = q.trim();
   const isLink = LINK.test(term);
 
   useEffect(() => {
+    try {
+      sessionStorage.setItem(LAST_KEY, term);
+    } catch {}
     if (timer.current) clearTimeout(timer.current);
     setMsg(null);
     if (!term || isLink) {
@@ -57,6 +107,7 @@ export default function SearchPage() {
         const j = await r.json();
         if (id !== reqId.current) return;
         setData({ songs: j.songs || [], mixes: j.mixes || [], stations: j.stations || [], artist: j.artist || null });
+        if (j.results?.length || j.artist) lastGood.current = term;
         if (!j.results?.length && !j.artist) setMsg(`Nothing full-length found for "${term}". Paste a YouTube, Audiomack or Boomplay link to add a song.`);
       } catch {
         if (id === reqId.current) setMsg("Search isn't reachable right now. Check your connection and try again.");
@@ -98,6 +149,7 @@ export default function SearchPage() {
         onSubmit={(e) => {
           e.preventDefault();
           if (isLink) openLink();
+          else if (term) remember(term);
         }}
       >
         <div className="searchbar-in">
@@ -121,6 +173,25 @@ export default function SearchPage() {
       {busy && <p className="hint" role="status">Searching every catalog…</p>}
       {msg && <p className="hint" role="status">{msg}</p>}
 
+      {!term && recent.length > 0 && (
+        <section className="shelf" aria-label="Recent searches">
+          <div className="shelf-head">
+            <h2 className="h-section">Recent searches</h2>
+            <button className="text-btn" onClick={clearRecent}>Clear</button>
+          </div>
+          <ul className="recent">
+            {recent.map((r) => (
+              <li key={r}>
+                <button onClick={() => setQ(r)}>
+                  <Icon name="search" size={18} />
+                  <span>{r}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {!term && (
         <section className="shelf" aria-label="Browse categories">
           <SectionHead title="Browse categories" />
@@ -139,7 +210,7 @@ export default function SearchPage() {
             </h2>
             {data.artist.fans ? <p className="muted small">{new Intl.NumberFormat("en", { notation: "compact" }).format(data.artist.fans)} fans on Deezer</p> : null}
             {data.artist.top.length > 0 && (
-              <button className="btn btn-plum" onClick={() => playList(data.artist!.top, 0)}>
+              <button className="btn btn-plum" onClick={() => { remember(term); playList(data.artist!.top, 0); }}>
                 <Icon name="play" size={18} />
                 Play
               </button>
@@ -160,7 +231,7 @@ export default function SearchPage() {
         <>
           {!data.artist && <section aria-label="Top result">
             <h2 className="h-section" style={{ marginBottom: 10 }}>Top result</h2>
-            <button className="top-match" onClick={() => playList(topList, 0)}>
+            <button className="top-match" onClick={() => { remember(term); playList(topList, 0); }}>
               <Artwork src={top.artwork} title={top.title} round={top.kind === "station"} />
               <span>
                 <strong>{top.title}</strong>

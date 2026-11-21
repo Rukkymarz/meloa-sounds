@@ -101,6 +101,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [storageOk, setStorageOk] = useState(true);
   const [needsSound, setNeedsSound] = useState(false);
   const soundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ytReadyRef = useRef(false);
+  const ytAltsRef = useRef<string[]>([]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytRef = useRef<any>(null);
@@ -235,14 +237,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       a.src = pb.url;
       a.play().catch(() => setStatus("paused"));
     } else if (pb.kind === "youtube") {
+      ytAltsRef.current = [...(pb.alts || [])];
       await loadYouTubeApi();
       await new Promise((r) => setTimeout(r, 0)); // let the video frame become visible first
       const mount = ytMountRef.current;
       if (!mount) return;
-      if (ytRef.current?.loadVideoById) {
+      if (ytRef.current?.loadVideoById && ytReadyRef.current) {
         ytRef.current.loadVideoById(pb.videoId);
-        if (ytRef.current.isMuted?.()) setNeedsSound(true);
-      } else {
+        checkStarted();
+      } else if (!ytRef.current) {
         const el = document.createElement("div");
         mount.innerHTML = "";
         mount.appendChild(el);
@@ -253,6 +256,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           // Meloa draws its own controls; YouTube's video, ads and branding stay visible.
           playerVars: { autoplay: 1, playsinline: 1, rel: 0, controls: 0, fs: 0, iv_load_policy: 3, disablekb: 1, origin: window.location.origin },
           events: {
+            onReady: (e: any) => {
+              ytReadyRef.current = true;
+              try {
+                e.target.playVideo();
+              } catch {}
+              checkStarted();
+            },
             onStateChange: (e: any) => {
               if (e.data === 1) {
                 setStatus("playing");
@@ -262,25 +272,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
               if (e.data === 0) goTo(indexRef.current + 1);
             },
             onError: () => {
+              // Some uploads refuse to play outside YouTube: try the next official upload first.
+              const alt = ytAltsRef.current.shift();
+              if (alt) {
+                ytRef.current?.loadVideoById(alt);
+                checkStarted();
+                return;
+              }
               setStatus("error");
-              setError("YouTube won't play this video here. Skipping to the next song.");
+              setError("This song won't play outside YouTube. Skipping to the next song.");
               setTimeout(() => goTo(indexRef.current + 1), 1500);
             },
           },
         });
+      } else {
+        // player still loading: queue this video for when it's ready
+        setTimeout(() => {
+          try {
+            ytRef.current?.loadVideoById(pb.videoId);
+            checkStarted();
+          } catch {}
+        }, 800);
       }
-      // iPhones block sound when playback starts after a network wait. If YouTube hasn't
-      // started within ~1.8s, start it muted and offer a one-tap "Turn on sound".
-      if (soundTimer.current) clearTimeout(soundTimer.current);
-      soundTimer.current = setTimeout(() => {
-        const yt = ytRef.current;
-        if (!yt?.getPlayerState || yt.getPlayerState() === 1) return;
-        try {
-          yt.mute();
-          yt.playVideo();
-          setNeedsSound(true);
-        } catch {}
-      }, 1800);
     } else if (pb.kind === "embed") {
       setStatus("playing"); // the platform's own player takes over
     } else if (pb.kind === "external") {
@@ -291,6 +304,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // iPhones block sound when playback starts after a network wait. If YouTube hasn't
+  // started shortly after loading, start it muted and offer a one-tap "Turn on sound".
+  function checkStarted(attempt = 0) {
+    if (soundTimer.current) clearTimeout(soundTimer.current);
+    soundTimer.current = setTimeout(() => {
+      const yt = ytRef.current;
+      if (!yt?.getPlayerState) {
+        if (attempt < 5) checkStarted(attempt + 1);
+        return;
+      }
+      const st = yt.getPlayerState();
+      if (st === 1) {
+        if (yt.isMuted?.()) setNeedsSound(true);
+        return;
+      }
+      if (st === 3 && attempt < 4) return checkStarted(attempt + 1); // still buffering
+      try {
+        yt.mute();
+        yt.playVideo();
+        setNeedsSound(true);
+      } catch {}
+    }, 1200);
+  }
 
   // Find the next song's full version in the background, so tapping Next starts instantly.
   function prefetchNext() {

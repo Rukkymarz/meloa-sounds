@@ -295,3 +295,10 @@ input, select, textarea { font: inherit; color: var(--charcoal); background: #ff
   .album-head .art { width: 260px; }
 }
 @media (min-width: 960px) { .artist-hero { margin: 0 0 28px; } }
+
+/* ---------- recent searches ---------- */
+.text-btn { color: var(--copper-text); font-size: 15px; font-weight: 600; min-height: 44px; padding: 0 4px; }
+.recent { list-style: none; margin: 0; padding: 0; }
+.recent button { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 48px; text-align: left; border-bottom: 0.5px solid var(--line); color: var(--charcoal); }
+.recent button svg { color: var(--muted); flex: none; }
+.recent span { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

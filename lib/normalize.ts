@@ -9,7 +9,11 @@ export function cleanTitle(t: string): string {
 }
 
 export function cleanArtist(a: string): string {
-  return a.replace(/\s*-\s*Topic$/i, "").replace(/VEVO$/i, "").trim();
+  return a
+    .replace(/\s*-\s*Topic$/i, "")
+    .replace(/VEVO$/i, "")
+    .replace(/\s+\b(fka|aka|f\.k\.a\.|a\.k\.a\.)\b.*$/i, "")
+    .trim();
 }
 
 function fold(s: string): string {

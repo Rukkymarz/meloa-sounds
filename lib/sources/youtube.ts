@@ -65,7 +65,7 @@ export async function matchYouTube(artist: string, title: string, expectedSec?: 
     return w.length ? w.filter((t) => h.has(t)).length / w.length : 0;
   };
   const leadArtist = a.split(/,|&| x | and /i)[0].trim();
-  let best: { c: Candidate; score: number } | null = null;
+  const scored: { c: Candidate; score: number }[] = [];
   for (const c of cands) {
     if (!c.embeddable || c.durationSec < 60) continue; // full tracks only
     if (BAD.test(c.title) && !BAD.test(title)) continue;
@@ -84,10 +84,12 @@ export async function matchYouTube(artist: string, title: string, expectedSec?: 
       if (diff > 0.35) continue;
       score += 1 - diff * 2;
     }
-    if (!best || score > best.score) best = { c, score };
+    scored.push({ c, score });
   }
-  if (!best) return null;
-  const c = best.c;
+  if (!scored.length) return null;
+  scored.sort((x, y) => y.score - x.score);
+  const c = scored[0].c;
+  const alts = scored.slice(1, 4).map((x) => x.c.videoId);
   return {
     id: `youtube:${c.videoId}`,
     source: "youtube",
@@ -97,7 +99,7 @@ export async function matchYouTube(artist: string, title: string, expectedSec?: 
     artwork: c.thumb,
     durationSec: c.durationSec,
     tier: 2,
-    playback: { kind: "youtube", videoId: c.videoId },
+    playback: { kind: "youtube", videoId: c.videoId, alts },
     license: { name: "Played by YouTube (ads by YouTube)", url: `https://www.youtube.com/watch?v=${c.videoId}` },
     pageUrl: `https://www.youtube.com/watch?v=${c.videoId}`,
     kind: "song",

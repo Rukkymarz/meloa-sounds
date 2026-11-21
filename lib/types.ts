@@ -24,7 +24,7 @@ export type SourceName =
  */
 export type Playback =
   | { kind: "audio"; url: string; live?: boolean }
-  | { kind: "youtube"; videoId: string }
+  | { kind: "youtube"; videoId: string; alts?: string[] } // alts: backup uploads if the first refuses to play
   | { kind: "embed"; provider: SourceName; src: string; height: number; note?: string }
   | { kind: "resolve"; source: SourceName; id: string } // resolved on click (saves API quota)
   | { kind: "external"; provider: SourceName; url: string } // hand off to another app (e.g. Open in Spotify)
