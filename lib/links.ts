@@ -1,6 +1,6 @@
 import { getJson, getText, enc } from "./http";
 import { mixcloudWidget } from "./sources/mixcloud";
-import { audiomackEmbed } from "./sources/audiomack";
+import { parseAudiomackUrl, checkAudiomack, audiomackPageUrl } from "./sources/audiomack";
 import { youtubeById } from "./sources/youtube";
 import { cleanTitle } from "./normalize";
 import type { Track } from "./types";
@@ -59,20 +59,26 @@ export async function resolveLink(raw: string): Promise<Track> {
   }
 
   // ---- Audiomack: /{uploader}/{song|album|playlist}/{slug} ----
+  // Same check as saved releases: the official player must load, otherwise "Open in Audiomack".
   if (host === "audiomack.com" && parts.length >= 3 && ["song", "album", "playlist"].includes(parts[1])) {
-    const [uploader, type, slug] = parts as [string, "song" | "album" | "playlist", string];
-    const card = await playerCard(u.toString()).catch(() => null);
+    const ref = parseAudiomackUrl(`https://audiomack.com/${parts.slice(0, 3).join("/")}`);
+    if (!ref) throw new Error("That Audiomack link doesn't look right.");
+    const c = await checkAudiomack(ref);
+    const page = audiomackPageUrl(ref);
     return {
-      id: `audiomack:${uploader}/${type}/${slug}`,
+      id: `audiomack:${ref.uploader}/${ref.type}/${ref.slug}`,
       source: "audiomack",
-      sourceId: `${uploader}/${type}/${slug}`,
-      title: cleanTitle(card?.title?.split(" by ")[0] || slug.replace(/-/g, " ")),
-      artist: card?.title?.split(" by ")[1]?.replace(/\s*\|.*$/, "") || uploader,
-      artwork: card?.image,
+      sourceId: `${ref.uploader}/${ref.type}/${ref.slug}`,
+      title: cleanTitle(c.title || ref.slug.replace(/-/g, " ")),
+      artist: (c.artist || ref.uploader) + (ref.type === "album" ? " · Album" : ref.type === "playlist" ? " · Playlist" : ""),
+      artwork: c.artwork,
       tier: 3,
-      playback: { kind: "embed", provider: "audiomack", src: audiomackEmbed(type, uploader, slug), height: type === "song" ? 252 : 400 },
-      pageUrl: u.toString(),
-      kind: /mix|mixtape/i.test(slug) || type !== "song" ? "mix" : "song",
+      playback: c.ok
+        ? { kind: "embed", provider: "audiomack", src: c.src, height: ref.type === "song" ? 252 : 400 }
+        : { kind: "external", provider: "audiomack", url: page },
+      license: { name: "Official Audiomack release", url: page },
+      pageUrl: page,
+      kind: /mix|mixtape/i.test(ref.slug) ? "mix" : "song",
     };
   }
 

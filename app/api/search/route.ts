@@ -9,7 +9,8 @@ import { searchCcmixter } from "@/lib/sources/ccmixter";
 import { searchMixcloud } from "@/lib/sources/mixcloud";
 import { searchRadio } from "@/lib/sources/radio";
 import { searchDeezer, deezerArtistMatch } from "@/lib/sources/deezer";
-import { searchAudiomack } from "@/lib/sources/audiomack";
+import { searchAudiomack, audiomackEnabled } from "@/lib/sources/audiomack";
+import { searchCurated } from "@/lib/curated";
 
 export const runtime = "nodejs";
 export const maxDuration = 15;
@@ -31,7 +32,8 @@ export async function GET(req: NextRequest) {
     tasks.openverse = searchOpenverse(q, 12);
     tasks.archive = searchArchive(q, 8);
     tasks.ccmixter = searchCcmixter(q, 6);
-    tasks.audiomack = searchAudiomack(q, 15);
+    tasks.curated = searchCurated(q, 10);
+    if (audiomackEnabled()) tasks.audiomack = searchAudiomack(q, 15);
     tasks.deezer = searchDeezer(q, 25);
   }
   if (type === "all" || type === "mix") tasks.mixcloud = searchMixcloud(q, 10);
@@ -49,6 +51,7 @@ export async function GET(req: NextRequest) {
       mixes: results.filter((t) => t.kind === "mix"),
       stations: results.filter((t) => t.kind === "station"),
       status,
+      audiomackLive: audiomackEnabled(),
     },
     { headers: { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=3600" } },
   );

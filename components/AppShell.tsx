@@ -70,7 +70,7 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
         <div className="yt-mount" style={{ display: showsVideo ? "block" : "none" }}>
           <div ref={ytMountRef} />
         </div>
-        {current && current.playback.kind === "embed" && (
+        {current && current.playback.kind === "embed" && officialPlayer(current.playback.src) && (
           <iframe
             key={current.playback.src}
             src={current.playback.src}
@@ -125,4 +125,17 @@ function MiniPlayer() {
       {canControl && <span className="mini-progress" style={{ width: `${pct}%` }} aria-hidden="true" />}
     </div>
   );
+}
+
+// Only official platform players are ever put in an iframe.
+const PLAYER_DOMAINS = ["mixcloud.com", "soundcloud.com", "bandcamp.com", "boomplay.com", "mdundo.com", "spotify.com", "audius.co"];
+function officialPlayer(src: string) {
+  try {
+    const u = new URL(src);
+    if (u.protocol !== "https:") return false;
+    if (u.hostname === "audiomack.com") return /^\/embed\/(song|album|playlist)\//.test(u.pathname);
+    return PLAYER_DOMAINS.some((d) => u.hostname === d || u.hostname.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AudiomackAdmin } from "@/components/AudiomackAdmin";
 
 // Simple review screen. Token stays in this tab only (sessionStorage).
 export default function Admin() {
@@ -65,6 +66,7 @@ export default function Admin() {
               <p className="muted">{t.details}</p>
             </div>
           ))}
+          <AudiomackAdmin token={token} />
         </>
       )}
     </>
