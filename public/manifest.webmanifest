@@ -4,7 +4,7 @@
   "description": "Music from every corner of the world, free and full-length.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FAF5EC",
-  "theme_color": "#FAF5EC",
+  "background_color": "#0f0e11",
+  "theme_color": "#0f0e11",
   "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePlayer } from "@/components/PlayerProvider";
 import { SongList, Shelf } from "@/components/Shelves";
+import { AppearancePicker } from "@/components/Appearance";
 
 export default function LibraryPage() {
   const { saved, history, storageOk } = usePlayer();
@@ -37,6 +38,9 @@ export default function LibraryPage() {
         <h3>Playlists aren&apos;t available yet</h3>
         <p>Meloa doesn&apos;t have accounts yet, so playlists can&apos;t be created or synced between devices.</p>
       </div>
+
+      <div style={{ height: 24 }} />
+      <AppearancePicker />
     </>
   );
 }

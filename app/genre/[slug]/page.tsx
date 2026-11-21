@@ -35,7 +35,7 @@ export default function GenrePage({ params }: { params: Promise<{ slug: string }
 
   return (
     <>
-      <header className="page-head" style={{ borderBottom: `4px solid ${g.color}`, marginBottom: 18 }}>
+      <header className="page-head" style={{ borderBottom: `4px solid ${g.bright}`, marginBottom: 18 }}>
         <h1 className="h-large">{g.name}</h1>
       </header>
       {!data && !err && <p className="hint" role="status">Gathering charts, mixes and stations…</p>}

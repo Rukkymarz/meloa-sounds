@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { Track } from "@/lib/types";
 import { usePlayer } from "./PlayerProvider";
 import { Artwork } from "./Artwork";
@@ -73,11 +74,11 @@ export function SongList({ title, tracks, href, ranked = false, paged = false, s
   );
 }
 
-export function GenreGrid({ genres }: { genres: { slug: string; name: string; color: string }[] }) {
+export function GenreGrid({ genres }: { genres: { slug: string; name: string; color: string; bright?: string }[] }) {
   return (
     <div className="genre-grid">
       {genres.map((g) => (
-        <Link key={g.slug} href={`/genre/${g.slug}`} className="genre-tile" style={{ background: g.color }}>
+        <Link key={g.slug} href={`/genre/${g.slug}`} className="genre-tile" style={{ "--tile": g.color, "--tile-bright": g.bright || g.color } as CSSProperties}>
           {g.name}
         </Link>
       ))}

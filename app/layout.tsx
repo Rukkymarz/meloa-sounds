@@ -3,6 +3,7 @@ import { Familjen_Grotesk } from "next/font/google";
 import "./globals.css";
 import { PlayerProvider } from "@/components/PlayerProvider";
 import { AppShell } from "@/components/AppShell";
+import { themeBootScript } from "@/components/Appearance";
 
 const display = Familjen_Grotesk({ subsets: ["latin", "latin-ext"], weight: ["500", "600", "700"], variable: "--font-display", display: "swap" });
 
@@ -13,11 +14,11 @@ export const metadata: Metadata = {
   description: "Music from every corner of the world, played through each platform's official, licensed player.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
-  appleWebApp: { capable: true, title: "Meloa", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Meloa", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FAF5EC",
+  themeColor: "#0f0e11",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -25,7 +26,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={display.variable}>
+    <html lang="en" className={display.variable} data-theme="dark" data-accent="rose" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body>
         <PlayerProvider>
           <AppShell siteName={NAME}>{children}</AppShell>
