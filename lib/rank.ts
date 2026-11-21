@@ -29,10 +29,20 @@ export function mergeAndRank(tracks: Track[], q = ""): Track[] {
     const isrc = best.isrc || rest.find((r) => r.isrc)?.isrc;
     merged.push({ ...best, artwork: art, isrc, alternates: rest });
   }
-  const score = (t: Track) =>
-    (q ? similarity(`${t.artist} ${t.title}`, q) * 3 : 0) +
-    (5 - t.tier) * 0.6 +
-    (t.alternates?.length || 0) * 0.15;
+  // Relevance first (artist name hits matter most), then how freely it plays.
+  const qk = normKey(q, "").split("|")[0];
+  const score = (t: Track) => {
+    if (!q) return (5 - t.tier) * 0.6;
+    const ak = normKey(t.artist, "").split("|")[0];
+    const artistHit = ak === qk ? 4 : ak.split(" ").includes(qk) || qk.split(" ").includes(ak) ? 2.5 : 0;
+    return (
+      artistHit +
+      similarity(t.title, q) * 2 +
+      similarity(`${t.artist} ${t.title}`, q) * 1.5 +
+      (5 - t.tier) * 0.35 +
+      (t.alternates?.length || 0) * 0.15
+    );
+  };
   return merged.sort((a, b) => score(b) - score(a));
 }
 
