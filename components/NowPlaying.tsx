@@ -130,6 +130,12 @@ export function NowPlaying() {
         </div>
       )}
 
+      {pb.kind === "embed" && pb.provider === "audiomack" && current.pageUrl && (
+        <a className="np-alt-link" href={current.pageUrl} target="_blank" rel="noreferrer">
+          Not playing? Open in Audiomack
+        </a>
+      )}
+
       {needsSound && (
         <button className="np-handoff" onClick={turnOnSound}>
           Turn on sound

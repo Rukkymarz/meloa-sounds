@@ -326,3 +326,4 @@ input, select, textarea { font: inherit; color: var(--text); background: var(--c
 .recent button { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 48px; text-align: left; border-bottom: 0.5px solid var(--line); color: var(--text); }
 .recent button svg { color: var(--muted); flex: none; }
 .recent span { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-alt-link { margin-top: 14px; align-self: center; width: auto !important; color: var(--accent-soft); font-size: 15px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }

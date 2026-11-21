@@ -171,7 +171,12 @@ export async function checkAudiomack(r: AudiomackRef): Promise<AudiomackCheck> {
 
   try {
     const e = await fetchText(src);
-    if (e.status !== 200) return { ok: false, src, title, artist, artwork, note: `Audiomack's player answered ${e.status}.` };
+    if (e.status === 404 || e.status === 410) return { ok: false, src, title, artist, artwork, note: `Audiomack's player answered ${e.status}: release not available.` };
+    if (e.status !== 200) {
+      // 403/429/5xx usually means Audiomack's bot protection blocked our server, not that the
+      // player is broken. Listeners' browsers load it normally, so show the official player.
+      return { ok: true, src, title, artist, artwork, note: `Server check got ${e.status} (bot protection); the address is Audiomack's official player, so it is shown.` };
+    }
     if (!e.type.includes("html")) return { ok: false, src, title, artist, artwork, note: "Audiomack's player didn't return a page." };
     const pageTitle = (e.body.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || "") + " " + (meta(e.body, "og:title") || "");
     if (/not\s+found|\b404\b|no longer available|has been removed|unavailable/i.test(pageTitle)) {
@@ -188,6 +193,8 @@ export async function checkAudiomack(r: AudiomackRef): Promise<AudiomackCheck> {
     }
     return { ok: true, src, title, artist, artwork, note: "Official Audiomack player loads." };
   } catch (err) {
-    return { ok: false, src, title, artist, artwork, note: `Couldn't reach Audiomack's player (${(err as Error).name}).` };
+    const er = err as Error & { cause?: { code?: string; message?: string } };
+    const why = [er.name, er.message, er.cause?.code || er.cause?.message].filter(Boolean).join(": ");
+    return { ok: true, src, title, artist, artwork, note: `Server couldn't reach Audiomack (${why}); the address is Audiomack's official player, so it is shown.` };
   }
 }
