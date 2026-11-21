@@ -145,6 +145,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // If a song's player fails, try the next verified player saved for the same song.
   const fallbackRef = useRef<() => boolean>(() => false);
+  const goToRef = useRef<(i: number) => void>(() => {});
+  const bgSkips = useRef(0);
 
   // one shared <audio> element for the whole app session
   useEffect(() => {
@@ -235,6 +237,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         return;
       }
     }
+    if (typeof document !== "undefined" && document.hidden && track.playback.kind === "youtube") {
+      const audioFb = track.fallbacks?.find((f) => f.kind === "audio");
+      if (audioFb) {
+        track = { ...track, playback: audioFb };
+      } else if (bgSkips.current < 8) {
+        // YouTube only plays while the app is open; keep the music going with the next song.
+        bgSkips.current++;
+        setTimeout(() => goToRef.current(indexRef.current + 1), 0);
+        return;
+      }
+    }
+    bgSkips.current = 0;
     setCurrent(track);
     remember(track);
     prefetchNext();
@@ -398,6 +412,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [start],
   );
 
+  goToRef.current = goTo;
+
   const playList = useCallback(
     (list: Track[], startAt: number) => {
       setQueue(list);
@@ -444,13 +460,41 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     goTo(indexRef.current - 1);
   }, [goTo, position, seek]);
 
+  // Lock-screen / Control Center controls, so music keeps going and stays controllable
+  // after you leave the app.
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
-    navigator.mediaSession.setActionHandler("play", toggle);
-    navigator.mediaSession.setActionHandler("pause", toggle);
-    navigator.mediaSession.setActionHandler("nexttrack", next);
-    navigator.mediaSession.setActionHandler("previoustrack", prev);
-  }, [toggle, next, prev]);
+    const ms = navigator.mediaSession;
+    const safe = (a: MediaSessionAction, h: MediaSessionActionHandler | null) => {
+      try {
+        ms.setActionHandler(a, h);
+      } catch {}
+    };
+    safe("play", () => (status === "playing" ? null : toggle()));
+    safe("pause", () => (status === "playing" ? toggle() : null));
+    safe("nexttrack", next);
+    safe("previoustrack", prev);
+    safe("seekto", (d) => (d.seekTime != null ? seek(d.seekTime) : null));
+  }, [toggle, next, prev, seek, status]);
+
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    navigator.mediaSession.playbackState = status === "playing" ? "playing" : status === "paused" ? "paused" : "none";
+    if (duration > 0 && position <= duration) {
+      try {
+        navigator.mediaSession.setPositionState({ duration, position, playbackRate: 1 });
+      } catch {}
+    }
+  }, [status, position, duration]);
+
+  // iPhone (Safari 16.4+): treat Meloa as a music player, so sound keeps playing in the
+  // background and isn't cut by the silent switch.
+  useEffect(() => {
+    try {
+      const as = (navigator as any).audioSession;
+      if (as) as.type = "playback";
+    } catch {}
+  }, []);
 
   return (
     <Ctx.Provider

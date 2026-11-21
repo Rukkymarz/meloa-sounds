@@ -1,6 +1,7 @@
 import { lookupCatalog, saveToCatalog, saveMiss } from "./catalog";
 import { deezerTrack } from "./sources/deezer";
 import { searchAudius } from "./sources/audius";
+import { searchJamendo } from "./sources/jamendo";
 import { searchAudiomack, audiomackEnabled } from "./sources/audiomack";
 import { matchYouTube } from "./sources/youtube";
 import { resolveArchive } from "./sources/archive";
@@ -99,8 +100,9 @@ export async function findFullSource(meta: Pick<Track, "title" | "artist"> & Par
         },
       );
     });
-  const [audiusList, amList, yt] = await Promise.all([
+  const [audiusList, jamList, amList, yt] = await Promise.all([
     within(searchAudius(q, 5), 2500, [] as Track[]),
+    within(searchJamendo(q, { limit: 5 }), 2500, [] as Track[]),
     audiomackEnabled() ? within(searchAudiomack(q, 5), 3000, [] as Track[]) : Promise.resolve([] as Track[]),
     within(matchYouTube(meta.artist, meta.title, meta.durationSec), 6000, null as Track | null),
   ]);
@@ -110,6 +112,12 @@ export async function findFullSource(meta: Pick<Track, "title" | "artist"> & Par
     later(() => saveToCatalog(meta, audius));
     if (yt) later(() => saveToCatalog(meta, { ...yt, title: meta.title, artist: meta.artist }));
     return { ...audius, artwork: audius.artwork || meta.artwork };
+  }
+  const jam = jamList.find(close);
+  if (jam) {
+    later(() => saveToCatalog(meta, jam));
+    if (yt) later(() => saveToCatalog(meta, { ...yt, title: meta.title, artist: meta.artist }));
+    return { ...jam, artwork: jam.artwork || meta.artwork };
   }
   const am = amList.find(close);
   if (am) {

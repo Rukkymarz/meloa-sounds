@@ -42,6 +42,7 @@ export function mergeAndRank(tracks: Track[], q = ""): Track[] {
       similarity(t.title, q) * 2 +
       similarity(`${t.artist} ${t.title}`, q) * 1.5 +
       (5 - t.tier) * 0.35 +
+      (t.playback.kind === "audio" ? 0.8 : 0) + // plays in Meloa's own player, keeps going in the background
       (t.alternates?.length || 0) * 0.15
     );
   };
