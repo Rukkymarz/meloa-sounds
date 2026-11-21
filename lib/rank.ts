@@ -51,13 +51,13 @@ export async function gather(tasks: Record<string, Promise<Track[]>>) {
   const names = Object.keys(tasks);
   const settled = await Promise.allSettled(Object.values(tasks));
   const tracks: Track[] = [];
-  const status: Record<string, "ok" | "error" | "empty"> = {};
+  const status: Record<string, string> = {};
   settled.forEach((r, i) => {
     if (r.status === "fulfilled") {
       tracks.push(...r.value);
       status[names[i]] = r.value.length ? "ok" : "empty";
     } else {
-      status[names[i]] = "error";
+      status[names[i]] = `error: ${String(r.reason?.message || r.reason).slice(0, 160)}`;
       console.warn(`[meloa] ${names[i]} failed:`, r.reason?.message || r.reason);
     }
   });
