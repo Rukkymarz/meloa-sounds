@@ -94,7 +94,7 @@ export function checkItem(it: ImportItem): { status: ItemStatus; reasons: string
   if (/\b(preview|snippet|teaser|clip|excerpt)\b/i.test(it.title)) review("Title suggests a preview or excerpt.");
 
   if (!it.releaseYear) review("Original release year unknown (needed for decade browsing).");
-  else if (it.releaseYear < 1880 || it.releaseYear > new Date().getFullYear() + 1) bad(`Release year ${it.releaseYear} is out of range.`);
+  else if (it.releaseYear < 1860 || it.releaseYear > new Date().getFullYear() + 1) bad(`Release year ${it.releaseYear} is out of range.`);
 
   if (it.source === "fma" || it.source === "wikimedia") {
     const lic = it.license?.name?.trim() || "";

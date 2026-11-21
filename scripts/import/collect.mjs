@@ -75,7 +75,12 @@ async function wikimedia() {
         kind: "song",
         tier: 1,
         playback: { kind: "audio", url: playUrl },
-        license: { name: lic, url: m.LicenseUrl?.value, attribution: `${artist}, via Wikimedia Commons (${lic})` },
+        license: {
+          name: lic,
+          // Public-domain files carry no licence URL: point to the PD mark and keep the file page as the record.
+          url: m.LicenseUrl?.value || (/public domain|^pd/i.test(lic) ? "https://creativecommons.org/publicdomain/mark/1.0/" : undefined),
+          attribution: `${artist}, via Wikimedia Commons (${lic}): https://commons.wikimedia.org/wiki/${encodeURIComponent(p.title.replace(/ /g, "_"))}`,
+        },
         notes: mp3 ? [] : ["No MP3 transcode: may not play on iPhone."],
       });
       if (items.filter((x) => x.genre === genre).length >= per) break;
@@ -95,7 +100,8 @@ async function fma() {
   const items = [];
   const per = Math.max(2, Math.ceil(limit / FMA_GENRES.length));
   for (const [genre, slug] of FMA_GENRES) {
-    const page = await getText(`https://freemusicarchive.org/genre/${slug}/?sort=track_interest&d=1`, { browser: true });
+    const page = await getText(`https://freemusicarchive.org/genre/${slug}/`, { browser: true });
+    if (page.status !== 200) log(`  FMA ${slug}: ${page.status}`);
     const infos = [...page.text.matchAll(/data-track-info='([^']+)'/g)].map((m) => {
       try {
         return JSON.parse(m[1]);
