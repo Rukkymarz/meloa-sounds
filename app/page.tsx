@@ -49,6 +49,15 @@ export default async function Home() {
         <GenreGrid genres={GENRES.filter((g) => DISCOVER.includes(g.slug))} />
       </section>
 
+      <section className="shelf" aria-label="Browse by decade">
+        <SectionHead title="Browse by decade" href="/decades" more="All decades" />
+        <div className="chips">
+          {[1960, 1970, 1980, 1990, 2000, 2010, 2020].map((y) => (
+            <Link key={y} href="/decades" className="chip">{y}s</Link>
+          ))}
+        </div>
+      </section>
+
       {d.countries.length > 0 && (
         <section className="shelf" aria-label="Around the world">
           <SectionHead title="Around the world" href="/new" more="All charts" />

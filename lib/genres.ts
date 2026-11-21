@@ -26,6 +26,7 @@ export const GENRES: GenreDef[] = [
   { slug: "rnb", name: "R&B & Soul", color: "#4A3B6B", bright: "#EC4899", deezer: 165, audius: "R&B/Soul", jamendo: "rnb", mixcloud: "rnb", radio: "rnb", audiomack: "rb" },
   { slug: "pop", name: "Pop", color: "#7A3E58", bright: "#F472B6", deezer: 132, audius: "Pop", jamendo: "pop", mixcloud: "pop", radio: "pop" },
   { slug: "dancehall-reggae", name: "Dancehall & Reggae", color: "#3D5A2A", bright: "#22C55E", deezer: 144, audius: "Reggae", jamendo: "reggae", mixcloud: "dancehall", radio: "reggae", audiomack: "reggae" },
+  { slug: "funk", name: "Funk & Disco", color: "#6B2F5A", bright: "#F43F5E", query: "funk", audius: "Funk", jamendo: "funk", mixcloud: "funk", radio: "funk" },
   { slug: "house", name: "House & Dance", color: "#5C4033", bright: "#06B6D4", deezer: 113, audius: "House", jamendo: "house", mixcloud: "house", radio: "house", audiomack: "electronic" },
   { slug: "electronic", name: "Electronic", color: "#283C5C", bright: "#0EA5E9", deezer: 106, audius: "Electronic", jamendo: "electronic", mixcloud: "electronic", radio: "electronic", audiomack: "electronic" },
   { slug: "rock", name: "Rock", color: "#6E2F2F", bright: "#DC2626", deezer: 152, audius: "Rock", jamendo: "rock", mixcloud: "rock", radio: "rock", audiomack: "rock" },

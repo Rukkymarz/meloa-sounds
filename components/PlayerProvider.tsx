@@ -143,6 +143,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // If a song's player fails, try the next verified player saved for the same song.
+  const fallbackRef = useRef<() => boolean>(() => false);
+
   // one shared <audio> element for the whole app session
   useEffect(() => {
     const a = new Audio();
@@ -155,6 +158,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const onPause = () => setStatus((s) => (s === "loading" ? s : "paused"));
     const onErr = () => {
       if (!a.src) return;
+      if (fallbackRef.current()) return;
       setStatus("error");
       setError("This stream couldn't be played. Skipping to the next song.");
       setTimeout(() => goTo(indexRef.current + 1), 1500);
@@ -294,6 +298,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
                 checkStarted();
                 return;
               }
+              if (fallbackRef.current()) return;
               setStatus("error");
               setError("This song won't play outside YouTube. Skipping to the next song.");
               setTimeout(() => goTo(indexRef.current + 1), 1500);
@@ -371,6 +376,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     setNeedsSound(false);
   }, []);
+
+  fallbackRef.current = () => {
+    const c = current;
+    const fb = c?.fallbacks?.[0];
+    if (!c || !fb) return false;
+    start({ ...c, playback: fb, fallbacks: c.fallbacks!.slice(1) });
+    return true;
+  };
 
   const goTo = useCallback(
     (i: number) => {

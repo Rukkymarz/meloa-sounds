@@ -14,6 +14,12 @@ export type SourceName =
   | "radio"
   | "deezer"
   | "musicbrainz"
+  | "dailymotion"
+  | "fma"
+  | "reverbnation"
+  | "ampwall"
+  | "hearthis"
+  | "wikimedia"
   | "meloa";
 
 /**
@@ -57,6 +63,8 @@ export interface Track {
   pageUrl?: string; // link back to the original page (required credit on most platforms)
   kind?: "song" | "mix" | "station";
   alternates?: Track[];
+  releaseYear?: number; // original release year (drives decade browsing)
+  fallbacks?: Playback[]; // other verified players for the same song, tried in order
 }
 
 export interface SearchOptions {

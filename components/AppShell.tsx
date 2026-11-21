@@ -136,7 +136,7 @@ function MiniPlayer() {
 }
 
 // Only official platform players are ever put in an iframe.
-const PLAYER_DOMAINS = ["mixcloud.com", "soundcloud.com", "bandcamp.com", "boomplay.com", "mdundo.com", "spotify.com", "audius.co"];
+const PLAYER_DOMAINS = ["mixcloud.com", "soundcloud.com", "bandcamp.com", "boomplay.com", "mdundo.com", "spotify.com", "audius.co", "dailymotion.com", "ampwall.com", "reverbnation.com", "hearthis.at", "youtube.com", "youtube-nocookie.com"];
 function officialPlayer(src: string) {
   try {
     const u = new URL(src);

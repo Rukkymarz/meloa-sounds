@@ -17,6 +17,12 @@ const NAMES: Record<string, string> = {
   radio: "Radio Browser",
   deezer: "Deezer",
   meloa: "Meloa",
+  dailymotion: "Dailymotion",
+  fma: "Free Music Archive",
+  reverbnation: "ReverbNation",
+  ampwall: "Ampwall",
+  hearthis: "hearthis.at",
+  wikimedia: "Wikimedia Commons",
 };
 
 export const providerName = (s: string) => NAMES[s] || s;

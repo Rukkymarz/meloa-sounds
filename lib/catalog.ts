@@ -67,12 +67,14 @@ export async function lookupCatalog(artist: string, title: string): Promise<{ tr
   if (!db) return { track: null, recentMiss: false };
   const { data } = await db
     .from("tracks")
-    .select("id,title,artist,album,artwork,duration_sec,isrc,genres,track_sources(source,source_id,tier,playback,license,duration_sec,last_checked)")
+    .select("id,title,artist,album,artwork,duration_sec,isrc,genres,release_year,track_sources(source,source_id,tier,priority,playback,license,duration_sec,last_checked,verification)")
     .eq("norm_key", normKey(artist, title))
     .maybeSingle();
   if (!data) return { track: null, recentMiss: false };
   const sources = ((data as any).track_sources || []) as any[];
-  const playable = sources.filter((s) => s.playback?.kind && s.playback.kind !== "none").sort((a, b) => a.tier - b.tier);
+  const playable = sources
+    .filter((s) => s.playback?.kind && s.playback.kind !== "none" && (!s.verification || LISTENABLE.includes(s.verification)))
+    .sort((a, b) => a.tier - b.tier || (a.priority ?? 100) - (b.priority ?? 100));
   const miss = sources.find((s) => String(s.source_id).startsWith("miss:"));
   const recentMiss = !!miss && Date.now() - new Date(miss.last_checked).getTime() < 7 * 86400_000;
   const s = playable[0];
@@ -93,9 +95,40 @@ export async function lookupCatalog(artist: string, title: string): Promise<{ tr
       tier: s.tier,
       playback: s.playback,
       license: s.license ?? undefined,
+      releaseYear: (data as any).release_year ?? undefined,
+      fallbacks: playable.slice(1, 4).map((x) => x.playback),
       kind: "song",
     },
   };
+}
+
+const LISTENABLE = ["legacy", "verified"]; // pending / needs_review / rejected players stay hidden
+const TRACK_COLS =
+  "id,title,artist,album,artwork,duration_sec,genres,release_year,primary_genre,track_sources!inner(source,source_id,tier,priority,playback,license,duration_sec,verification,source_url)";
+
+function rowToTrack(r: any): Track {
+  const srcs = [...r.track_sources]
+    .filter((s: any) => s.playback?.kind && s.playback.kind !== "none")
+    .sort((a: any, b: any) => a.tier - b.tier || (a.priority ?? 100) - (b.priority ?? 100));
+  const s = srcs[0];
+  return {
+    id: `${s.source}:${s.source_id}`,
+    source: s.source,
+    sourceId: s.source_id,
+    title: r.title,
+    artist: r.artist,
+    album: r.album ?? undefined,
+    artwork: r.artwork ?? undefined,
+    durationSec: s.duration_sec ?? r.duration_sec ?? undefined,
+    genres: r.genres ?? [],
+    tier: s.tier,
+    playback: s.playback,
+    license: s.license ?? undefined,
+    pageUrl: s.source_url ?? undefined,
+    releaseYear: r.release_year ?? undefined,
+    fallbacks: srcs.slice(1, 4).map((x: any) => x.playback),
+    kind: "song",
+  } as Track;
 }
 
 /** Full-text search over songs already in the catalog (instant, zero quota). */
@@ -106,25 +139,38 @@ export async function searchCatalog(q: string, limit = 20): Promise<Track[]> {
   if (!term) return [];
   const { data } = await db
     .from("tracks")
-    .select("id,title,artist,artwork,duration_sec,genres,track_sources!inner(source,source_id,tier,playback,license)")
+    .select(TRACK_COLS)
     .or(`title.ilike.%${term}%,artist.ilike.%${term}%`)
     .lt("track_sources.tier", 4)
+    .in("track_sources.verification", LISTENABLE)
     .limit(limit);
-  return ((data || []) as any[]).map((r) => {
-    const s = [...r.track_sources].sort((a: any, b: any) => a.tier - b.tier)[0];
-    return {
-      id: `${s.source}:${s.source_id}`,
-      source: s.source,
-      sourceId: s.source_id,
-      title: r.title,
-      artist: r.artist,
-      artwork: r.artwork ?? undefined,
-      durationSec: r.duration_sec ?? undefined,
-      genres: r.genres ?? [],
-      tier: s.tier,
-      playback: s.playback,
-      license: s.license ?? undefined,
-      kind: "song",
-    } as Track;
-  });
+  return ((data || []) as any[]).filter((r) => r.track_sources?.length).map(rowToTrack);
+}
+
+/** Verified songs by ORIGINAL release decade and/or genre. */
+export async function browseCatalog(opts: { decade?: number; genre?: string; limit?: number }): Promise<Track[]> {
+  const db = supabaseAdmin();
+  if (!db) return [];
+  let q = db.from("tracks").select(TRACK_COLS).lt("track_sources.tier", 4).in("track_sources.verification", LISTENABLE);
+  if (opts.decade) q = q.eq("decade", opts.decade);
+  if (opts.genre) q = q.eq("primary_genre", opts.genre);
+  const { data } = await q.order("release_year", { ascending: true, nullsFirst: false }).limit(opts.limit ?? 60);
+  return ((data || []) as any[]).filter((r) => r.track_sources?.length).map(rowToTrack);
+}
+
+/** How many verified songs exist per decade and per genre (for the browse screen). */
+export async function catalogFacets(): Promise<{ decades: { decade: number; count: number }[]; genres: { genre: string; count: number }[] }> {
+  const db = supabaseAdmin();
+  if (!db) return { decades: [], genres: [] };
+  const { data } = await db.from("tracks").select("decade,primary_genre,track_sources!inner(verification)").eq("track_sources.verification", "verified").not("decade", "is", null).limit(5000);
+  const d = new Map<number, number>();
+  const g = new Map<string, number>();
+  for (const r of (data || []) as any[]) {
+    d.set(r.decade, (d.get(r.decade) || 0) + 1);
+    if (r.primary_genre) g.set(r.primary_genre, (g.get(r.primary_genre) || 0) + 1);
+  }
+  return {
+    decades: [...d].map(([decade, count]) => ({ decade, count })).sort((a, b) => a.decade - b.decade),
+    genres: [...g].map(([genre, count]) => ({ genre, count })).sort((a, b) => b.count - a.count),
+  };
 }
