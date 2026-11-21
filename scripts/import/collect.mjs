@@ -19,14 +19,17 @@ const log = (...a) => console.error(...a);
 // Public MediaWiki API: file licence, author, original date. Uses the MP3 transcode when
 // present so iPhones (no Ogg) can play it.
 const WIKI_QUERIES = [
-  ["jazz", 'incategory:"Jazz recordings" filetype:audio'],
-  ["blues", 'incategory:"Blues recordings" filetype:audio'],
-  ["gospel", 'incategory:"Gospel music" filetype:audio'],
-  ["jazz", 'incategory:"Ragtime" filetype:audio'],
-  ["country", 'incategory:"Country music recordings" filetype:audio'],
-  ["classical", 'incategory:"Audio files of classical music" filetype:audio'],
-  ["pop", 'incategory:"Edison Records" filetype:audio'],
-  ["world", 'incategory:"Audio files of music of Africa" filetype:audio'],
+  ["jazz", "filetype:audio jazz 78rpm recording"],
+  ["jazz", "filetype:audio ragtime recording"],
+  ["blues", "filetype:audio blues 78rpm"],
+  ["gospel", "filetype:audio spiritual jubilee singers"],
+  ["gospel", "filetype:audio gospel hymn recording 1920s"],
+  ["country", "filetype:audio old-time fiddle recording"],
+  ["pop", "filetype:audio Edison Records"],
+  ["pop", "filetype:audio Victor Records 1910s"],
+  ["classical", "filetype:audio Musopen"],
+  ["world", "filetype:audio highlife"],
+  ["world", "filetype:audio Library of Congress field recording song"],
 ];
 async function wikimedia() {
   const items = [];
@@ -46,10 +49,20 @@ async function wikimedia() {
       const dur = Math.round(Number(vi.duration || 0)) || undefined;
       const mp3 = (vi.derivatives || []).find((d) => /audio\/mpeg/.test(d.type))?.src;
       const playUrl = mp3 || (/mpeg|mp3|wav|flac/.test(vi.mime) ? vi.url : vi.url);
-      const name = stripTags(m.ObjectName?.value) || p.title.replace(/^File:/, "").replace(/\.[a-z0-9]+$/i, "");
-      const artist = stripTags(m.Artist?.value).slice(0, 120) || "Unknown artist";
+      let name = stripTags(m.ObjectName?.value) || p.title.replace(/^File:/, "").replace(/\.[a-z0-9]+$/i, "");
+      let artist = stripTags(m.Artist?.value).slice(0, 120) || "Unknown artist";
+      // "Performer - Title (1908)" file names carry the real performer and recording year.
+      const nm = name.match(/^(.{2,80}?)\s+-\s+(.+?)(?:\s*\((\d{4})\))?$/);
+      if (nm) {
+        artist = nm[1].trim();
+        name = nm[2].trim();
+      }
+      if (dur && dur > 15 * 60) continue; // services, lectures, long sessions
       const lic = stripTags(m.LicenseShortName?.value);
-      const year = yearOf(stripTags(m.DateTimeOriginal?.value)) || yearOf(name) || yearOf(stripTags(m.ImageDescription?.value));
+      // Original recording year: the year in the file name/description beats the upload date.
+      const fromName = yearOf(p.title) || yearOf(stripTags(m.ImageDescription?.value));
+      const fromDate = yearOf(stripTags(m.DateTimeOriginal?.value));
+      const year = fromName && (!fromDate || fromName <= fromDate) ? fromName : fromDate;
       items.push({
         source: "wikimedia",
         sourceId: String(p.pageid),
