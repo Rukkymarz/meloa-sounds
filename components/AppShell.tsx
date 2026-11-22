@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { usePlayer } from "./PlayerProvider";
 import { Icon } from "./Icon";
@@ -34,6 +34,63 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
   const showsVideo = kind === "youtube";
   const showsEmbed = kind === "embed";
   const frameMode = nowPlayingOpen ? "np" : "dock";
+
+  // The small official player can be dragged anywhere and snaps to the nearest corner.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("meloa:frame-pos") || "null");
+      if (saved) setDrag(saved);
+    } catch {}
+  }, []);
+  function settle(pos: { x: number; y: number }) {
+    const el = frameRef.current;
+    if (!el) return setDrag(pos);
+    // base position is bottom-right; snap left/right and keep it on screen
+    const r = el.getBoundingClientRect();
+    const baseLeft = r.left - pos.x;
+    const baseTop = r.top - pos.y;
+    const toLeft = r.left + r.width / 2 < window.innerWidth / 2;
+    const x = toLeft ? 8 - baseLeft : 0;
+    const minY = 8 - baseTop + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-t")) || 0);
+    const maxY = 0 + 60; // may sit a little lower, over the mini-player edge
+    const y = Math.min(maxY, Math.max(minY, pos.y));
+    const next = { x, y };
+    setDrag(next);
+    try {
+      localStorage.setItem("meloa:frame-pos", JSON.stringify(next));
+    } catch {}
+  }
+  function startDrag(e: React.PointerEvent) {
+    e.preventDefault();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); // keep the drag even over the video
+    } catch {}
+    const start = { px: e.clientX, py: e.clientY, ...drag };
+    let last = drag;
+    setDragging(true);
+    const move = (ev: PointerEvent) => {
+      last = { x: start.x + ev.clientX - start.px, y: start.y + ev.clientY - start.py };
+      setDrag(last);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setDragging(false);
+      settle(last);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+  function keyMove(e: React.KeyboardEvent) {
+    const step = 40;
+    const d = { ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-400, 0], ArrowRight: [400, 0] }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    settle({ x: drag.x + d[0], y: drag.y + d[1] });
+  }
 
   // Home-screen app: register the service worker (fast launch + offline page).
   useEffect(() => {
@@ -74,7 +131,14 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
 
       {/* One persistent home for platform players. It moves between the dock and Now Playing
           with CSS only, so the YouTube video or embed is never reloaded and stays visible. */}
-      <div className={`provider-frame ${frameMode}`} hidden={!showsVideo && !showsEmbed} aria-label="Official player">
+      <div
+        ref={frameRef}
+        className={`provider-frame ${frameMode}${dragging ? " dragging" : ""}`}
+        hidden={!showsVideo && !showsEmbed}
+        aria-label="Official player"
+        style={frameMode === "dock" ? ({ "--dx": `${drag.x}px`, "--dy": `${drag.y}px` } as React.CSSProperties) : undefined}
+      >
+        <div className="frame-grip" role="button" aria-label="Drag to move the player" tabIndex={0} onPointerDown={startDrag} onKeyDown={keyMove} />
         <div className="yt-mount" style={{ display: showsVideo ? "block" : "none" }}>
           <div ref={ytMountRef} />
         </div>
