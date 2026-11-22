@@ -42,7 +42,7 @@ export default async function Home() {
 
       <SongList title="Hot in Nigeria right now" tracks={d.nigeria.slice(0, 16)} paged href="/new?country=NG" />
 
-      {audiomack.length > 0 && <Shelf title="Fresh on Audiomack" tracks={audiomack} />}
+      {audiomack.length > 0 && <Shelf title="Fresh picks" tracks={audiomack} />}
 
       <section className="shelf" aria-label="Discover by genre">
         <SectionHead title="Discover by genre" href="/search" more="All genres" />

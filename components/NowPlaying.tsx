@@ -1,5 +1,7 @@
 "use client";
 
+import { AddToPlaylist } from "./AddToPlaylist";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePlayer } from "./PlayerProvider";
 import { Icon } from "./Icon";
@@ -143,7 +145,11 @@ export function NowPlaying() {
       )}
       {error && <p className="np-error" role="status">{error}</p>}
 
-      <p className="np-credit">
+      <AddToPlaylist track={current} />
+
+      <details className="np-credit">
+        <summary>Song info</summary>
+        {current.releaseYear ? `Released ${current.releaseYear}. ` : ""}
         {attribution(current)}
         {current.license?.url && (
           <>
@@ -157,7 +163,7 @@ export function NowPlaying() {
             <a href={current.pageUrl} target="_blank" rel="noreferrer">Original page</a>
           </>
         )}
-      </p>
+      </details>
 
       {(lyrics || plain) && (
         <div className="np-lyrics" aria-label="Lyrics">

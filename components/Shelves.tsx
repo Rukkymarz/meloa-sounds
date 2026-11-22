@@ -64,7 +64,7 @@ export function SongList({ title, tracks, href, ranked = false, paged = false, s
                     {t.durationSec && t.kind !== "station" ? `, ${fmt(t.durationSec)}` : ""}
                   </span>
                 </span>
-                {showHow && <span className={`how ${mode}`}>{playLabel(t)}</span>}
+                {showHow && mode === "external" && <span className="how external" aria-label={playLabel(t)}>↗</span>}
               </button>
             </li>
           );

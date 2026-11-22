@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePlayer } from "@/components/PlayerProvider";
 import { SongList, Shelf } from "@/components/Shelves";
 import { AppearancePicker } from "@/components/Appearance";
+import { useEffect, useState } from "react";
+import { myPlaylists, newPlaylist, type MyPlaylist } from "@/lib/myPlaylists";
 
 export default function LibraryPage() {
   const { saved, history, storageOk } = usePlayer();
@@ -34,13 +36,37 @@ export default function LibraryPage() {
       <div style={{ height: 24 }} />
       <Shelf title="Recently played" tracks={history.slice(0, 20)} />
 
-      <div className="empty" style={{ marginTop: 8 }}>
-        <h3>Playlists aren&apos;t available yet</h3>
-        <p>Meloa doesn&apos;t have accounts yet, so playlists can&apos;t be created or synced between devices.</p>
-      </div>
+      <Playlists />
 
       <div style={{ height: 24 }} />
       <AppearancePicker />
     </>
+  );
+}
+
+function Playlists() {
+  const [lists, setLists] = useState<MyPlaylist[]>([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setLists(myPlaylists()), []);
+  async function create() {
+    setBusy(true);
+    try {
+      const { id } = await newPlaylist("My playlist");
+      location.href = `/p/${id}`;
+    } catch {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="shelf" aria-label="Playlists">
+      <h2 className="h-section">Playlists</h2>
+      <p className="muted small">No account needed. Share a link to listen, or a link to build it together.</p>
+      <div className="chips">
+        <button className="chip on" onClick={create} disabled={busy}>{busy ? "Creating…" : "New playlist"}</button>
+        {lists.map((p) => (
+          <Link key={p.id} href={`/p/${p.id}`} className="chip">{p.name}</Link>
+        ))}
+      </div>
+    </section>
   );
 }

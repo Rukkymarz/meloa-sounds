@@ -49,7 +49,7 @@ export default function GenrePage({ params }: { params: Promise<{ slug: string }
       {data && (
         <>
           <SongList title="Top songs" tracks={data.chart.slice(0, 40)} ranked paged />
-          <Shelf title="Free and full, no ads" tracks={data.free} />
+          <Shelf title="Handpicked" tracks={data.free} />
           <SongList title="From the Meloa catalog" tracks={own} paged />
           <Shelf title="DJ mixes" tracks={data.mixes} />
           <SongList title="Live stations" tracks={data.stations} />

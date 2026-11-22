@@ -7,7 +7,6 @@ import { usePlayer } from "@/components/PlayerProvider";
 import { SongList, GenreGrid, SectionHead } from "@/components/Shelves";
 import { Artwork } from "@/components/Artwork";
 import { Icon } from "@/components/Icon";
-import { playLabel } from "@/lib/playinfo";
 import Link from "next/link";
 import { AlbumShelf, ArtistShelf, type AlbumLite } from "@/components/Albums";
 
@@ -236,8 +235,7 @@ export default function SearchPage() {
               <span>
                 <strong>{top.title}</strong>
                 <span className="muted small">{top.artist}</span>
-                <br />
-                <span className="footnote">{playLabel(top)}</span>
+
               </span>
             </button>
           </section>}
@@ -246,12 +244,6 @@ export default function SearchPage() {
           <SongList title="DJ mixes and shows" tracks={data.mixes.slice(0, 15)} showHow />
           <SongList title="Radio stations" tracks={data.stations.slice(0, 15)} showHow />
 
-          <div className="legend">
-            <span>Plays in Meloa: the full song streams here.</span>
-            <span>Meloa finds the full song: tap and Meloa looks for a licensed full-length version.</span>
-            <span>Opens in another app: the song plays in that app, such as Spotify.</span>
-            <span>Meloa never plays 30-second previews.</span>
-          </div>
         </>
       )}
     </>

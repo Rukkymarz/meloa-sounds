@@ -327,3 +327,10 @@ input, select, textarea { font: inherit; color: var(--text); background: var(--c
 .recent button svg { color: var(--muted); flex: none; }
 .recent span { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-alt-link { margin-top: 14px; align-self: center; width: auto !important; color: var(--accent-soft); font-size: 15px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
+.np-credit summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; justify-content: center; list-style: none; }
+.np-credit summary::-webkit-details-marker { display: none; }
+.atp { display: grid; justify-items: center; gap: 8px; }
+.atp-panel { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 420px; }
+.atp-new { display: flex; gap: 8px; width: 100%; }
+.atp-new input { flex: 1; min-height: 40px; border-radius: 20px; border: 1px solid var(--deep-muted); background: transparent; color: var(--deep-ink); padding: 0 14px; font-size: 16px; }
+.how.external { font-size: 16px; color: var(--muted); }
