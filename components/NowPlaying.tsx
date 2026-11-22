@@ -65,7 +65,6 @@ export function NowPlaying() {
   if (!current) return null;
   const pb = current.playback;
   const live = pb.kind === "audio" && pb.live;
-  const framed = pb.kind === "youtube" || pb.kind === "embed";
   const total = duration || current.durationSec || 0;
   const saved = isSaved(current);
 
@@ -75,16 +74,12 @@ export function NowPlaying() {
         <button ref={closeRef} className="icon-btn np-close" onClick={() => setNowPlayingOpen(false)} aria-label="Close Now Playing">
           <Icon name="down" size={26} />
         </button>
-        <span className="np-from">{providerName(pb.kind === "embed" || pb.kind === "external" ? pb.provider : current.source)}</span>
+        <span className="np-from">Now Playing</span>
         <span style={{ width: 44 }} />
       </div>
 
       {/* YouTube video / platform player is positioned here by the shell (provider-frame.np). */}
-      {framed ? (
-        <div className="np-frame-space" style={pb.kind === "embed" ? { height: pb.height } : undefined} aria-hidden="true" />
-      ) : (
-        <Artwork src={current.artwork} title={current.title} className="np-art" />
-      )}
+      <Artwork src={current.artwork} title={current.title} className="np-art" />
 
       <div className="np-title-row">
         <div className="np-titles">
@@ -124,7 +119,7 @@ export function NowPlaying() {
               <Icon name={status === "loading" ? "spin" : status === "playing" ? "pause" : "play"} size={44} />
             </button>
           ) : (
-            <span className="np-hint">Use the {providerName(pb.kind === "embed" ? pb.provider : current.source)} player above</span>
+            <span className="np-hint">Tap play in the small player</span>
           )}
           <button className="icon-btn big" onClick={next} aria-label="Next song">
             <Icon name="next" size={34} />

@@ -340,3 +340,5 @@ input, select, textarea { font: inherit; color: var(--text); background: var(--c
 .atp-new { display: flex; gap: 8px; width: 100%; }
 .atp-new input { flex: 1; min-height: 40px; border-radius: 20px; border: 1px solid var(--deep-muted); background: transparent; color: var(--deep-ink); padding: 0 14px; font-size: 16px; }
 .how.external { font-size: 16px; color: var(--muted); }
+/* In Now Playing the small player floats over the artwork; drag it anywhere. */
+.provider-frame.dock.over-np { z-index: 63; }

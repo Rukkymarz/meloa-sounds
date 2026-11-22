@@ -33,7 +33,7 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
   const kind = current?.playback.kind;
   const showsVideo = kind === "youtube";
   const showsEmbed = kind === "embed";
-  const frameMode = nowPlayingOpen ? "np" : "dock";
+  const frameMode = "dock";
 
   // The small official player can be dragged anywhere and snaps to the nearest corner.
   const frameRef = useRef<HTMLDivElement>(null);
@@ -45,19 +45,18 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
       if (saved) setDrag(saved);
     } catch {}
   }, []);
-  function settle(pos: { x: number; y: number }) {
+  function settle(pos: { x: number; y: number }, applied: { x: number; y: number } = drag) {
+    // Stay where it's dropped, anywhere on screen (only kept fully visible, as YouTube requires).
     const el = frameRef.current;
-    if (!el) return setDrag(pos);
-    // base position is bottom-right; snap left/right and keep it on screen
-    const r = el.getBoundingClientRect();
-    const baseLeft = r.left - pos.x;
-    const baseTop = r.top - pos.y;
-    const toLeft = r.left + r.width / 2 < window.innerWidth / 2;
-    const x = toLeft ? 8 - baseLeft : 0;
-    const minY = 8 - baseTop + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-t")) || 0);
-    const maxY = 0 + 60; // may sit a little lower, over the mini-player edge
-    const y = Math.min(maxY, Math.max(minY, pos.y));
-    const next = { x, y };
+    let next = pos;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      const baseLeft = r.left - applied.x; // where it would sit with no drag
+      const baseTop = r.top - applied.y;
+      const x = Math.min(window.innerWidth - r.width - baseLeft, Math.max(-baseLeft, pos.x));
+      const y = Math.min(window.innerHeight - r.height - baseTop, Math.max(-baseTop, pos.y));
+      next = { x, y };
+    }
     setDrag(next);
     try {
       localStorage.setItem("meloa:frame-pos", JSON.stringify(next));
@@ -79,14 +78,14 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       setDragging(false);
-      settle(last);
+      settle(last, last);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   }
   function keyMove(e: React.KeyboardEvent) {
     const step = 40;
-    const d = { ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-400, 0], ArrowRight: [400, 0] }[e.key];
+    const d = { ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-step, 0], ArrowRight: [step, 0] }[e.key];
     if (!d) return;
     e.preventDefault();
     settle({ x: drag.x + d[0], y: drag.y + d[1] });
@@ -133,7 +132,7 @@ export function AppShell({ children, siteName }: { children: React.ReactNode; si
           with CSS only, so the YouTube video or embed is never reloaded and stays visible. */}
       <div
         ref={frameRef}
-        className={`provider-frame ${frameMode}${dragging ? " dragging" : ""}`}
+        className={`provider-frame ${frameMode}${nowPlayingOpen ? " over-np" : ""}${dragging ? " dragging" : ""}`}
         hidden={!showsVideo && !showsEmbed}
         aria-label="Official player"
         style={frameMode === "dock" ? ({ "--dx": `${drag.x}px`, "--dy": `${drag.y}px` } as React.CSSProperties) : undefined}
